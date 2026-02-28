@@ -27,6 +27,9 @@ export type {
   ProductionPlanRequirementsStatus,
 } from './types';
 
+// Layout
+export * from './layout';
+
 // Main view components
 export { BaseDetailView } from './BaseDetailView';
 export { BaseBuildingsView } from './BaseBuildingsView';

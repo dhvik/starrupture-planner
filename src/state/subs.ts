@@ -13,6 +13,10 @@ import type {
     Production,
     CreateProductionPlanModalState,
     CorporationLevelSelection,
+    BaseLayout,
+    BaseLayoutBalance,
+    BaseLayoutBuilding,
+    BaseLayoutConnection,
 } from './db';
 import type {
     CorporationLevelInfo,
@@ -31,6 +35,7 @@ import { getAvailableBuildingsForSection } from '../components/mybases/utils/bui
 import { buildActivePlanOccupancy } from '../components/mybases/utils/activePlanOccupancy';
 import { calculateSharedInputShortages } from '../components/mybases/utils/sharedInputShortages';
 import { getSelectedFlowInputBuildings } from '../utils/productionPlanInputs';
+import { calculateLayoutBalance } from '../components/mybases/layout/utils/layoutBalanceCalculator';
 import type { CorporationWithStats } from '../components/corporations/types';
 import type { CorporationUsage, ItemTableData, ItemsHelperLookups } from '../components/items/types';
 import type {
@@ -69,6 +74,7 @@ regSub(SUB_IDS.PLANNER_SELECTED_CORPORATION_LEVEL, "plannerSelectedCorporationLe
 regSub(SUB_IDS.PLANNER_TARGET_AMOUNT, "plannerTargetAmount");
 regSub(SUB_IDS.BASES_LIST, "basesList");
 regSub(SUB_IDS.BASES_SELECTED_BASE_ID, "basesSelectedBaseId");
+regSub(SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE, "baseLayoutConnectorMode");
 regSub(SUB_IDS.UI_CONFIRMATION_DIALOG, "uiConfirmationDialog");
 regSub(SUB_IDS.PRODUCTION_PLAN_MODAL_STATE, "productionPlanModalState");
 regSub(SUB_IDS.ENERGY_GROUPS_LIST, "energyGroups");
@@ -915,6 +921,57 @@ regSub(SUB_IDS.BASES_STATS_SUMMARY,
         };
     },
     () => [[SUB_IDS.BASES_LIST], [SUB_IDS.BUILDINGS_BY_ID_MAP]]);
+
+//============================================================
+// Base Layout subscriptions
+//============================================================
+
+regSub(SUB_IDS.BASES_LAYOUT_BY_BASE_ID,
+    (base: Base | null): BaseLayout | undefined => {
+        return base?.layout;
+    },
+    (baseId: string) => [[SUB_IDS.BASES_BASE_BY_ID, baseId]]);
+
+regSub(SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID,
+    (layout: BaseLayout | undefined): BaseLayoutBuilding[] => {
+        return layout?.buildings ?? [];
+    },
+    (baseId: string) => [[SUB_IDS.BASES_LAYOUT_BY_BASE_ID, baseId]]);
+
+regSub(SUB_IDS.BASES_LAYOUT_CONNECTIONS_BY_BASE_ID,
+    (layout: BaseLayout | undefined): BaseLayoutConnection[] => {
+        return layout?.connections ?? [];
+    },
+    (baseId: string) => [[SUB_IDS.BASES_LAYOUT_BY_BASE_ID, baseId]]);
+
+// Combined subscription for internal use - returns both balances and building states
+regSub(SUB_IDS.BASES_LAYOUT_BALANCE_RESULT_BY_BASE_ID,
+    (layout: BaseLayout | undefined, buildingsById: BuildingsByIdMap) => {
+        return calculateLayoutBalance(layout, buildingsById);
+    },
+    (baseId: string) => [
+        [SUB_IDS.BASES_LAYOUT_BY_BASE_ID, baseId],
+        [SUB_IDS.BUILDINGS_BY_ID_MAP]
+    ]);
+
+// Public subscription - extracts just the balances array
+regSub(SUB_IDS.BASES_LAYOUT_BALANCE_BY_BASE_ID,
+    (result: ReturnType<typeof calculateLayoutBalance>): BaseLayoutBalance[] => {
+        return result.balances;
+    },
+    (baseId: string) => [[SUB_IDS.BASES_LAYOUT_BALANCE_RESULT_BY_BASE_ID, baseId]]);
+
+// Public subscription - extracts building production states (convert Map to object for reactivity)
+regSub(SUB_IDS.BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID,
+    (result: ReturnType<typeof calculateLayoutBalance>) => {
+        // Convert Map to plain object so Reflex can detect changes
+        const statesObj: Record<string, any> = {};
+        result.buildingStates.forEach((state, id) => {
+            statesObj[id] = state;
+        });
+        return statesObj;
+    },
+    (baseId: string) => [[SUB_IDS.BASES_LAYOUT_BALANCE_RESULT_BY_BASE_ID, baseId]]);
 
 //============================================================
 // Production Plan subscriptions

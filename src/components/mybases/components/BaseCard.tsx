@@ -4,6 +4,7 @@ import type { Base, Item, Production } from '../../../state/db';
 import { SUB_IDS } from '../../../state/sub-ids';
 import { ItemImage, BuildingImage } from '../../ui';
 import { EnergyGroupSelector } from './EnergyGroupSelector';
+import BaseLayoutBalanceBadge from '../layout/components/BaseLayoutBalanceBadge';
 import type {
   BaseDetailStats,
   BaseInputItem,
@@ -159,6 +160,13 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
                 ></div>
               </div>
             </div>
+
+            {/* Layout Balance Badge */}
+            {base.layout && (
+              <div className="pt-1">
+                <BaseLayoutBalanceBadge baseId={base.id} />
+              </div>
+            )}
           </div>
         </div>
 

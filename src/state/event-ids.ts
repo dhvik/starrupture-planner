@@ -26,6 +26,18 @@ export const EVENT_IDS = {
     BASES_UPDATE_BUILDING_ITEM_SELECTION: 'basesUpdateBuildingItemSelection',
     BASES_SET_ENERGY_GROUP: 'basesSetEnergyGroup',
 
+    // Base Layout events
+    BASES_LAYOUT_ADD_BUILDING: 'basesLayoutAddBuilding',
+    BASES_LAYOUT_REMOVE_BUILDING: 'basesLayoutRemoveBuilding',
+    BASES_LAYOUT_MOVE_BUILDING: 'basesLayoutMoveBuilding',
+    BASES_LAYOUT_UPDATE_BUILDING_COUNT: 'basesLayoutUpdateBuildingCount',
+    BASES_LAYOUT_ADD_CONNECTION: 'basesLayoutAddConnection',
+    BASES_LAYOUT_REMOVE_CONNECTION: 'basesLayoutRemoveConnection',
+    BASES_LAYOUT_UPDATE_CONNECTION_TIER: 'basesLayoutUpdateConnectionTier',
+    BASES_LAYOUT_SET_GRID_OFFSET: 'basesLayoutSetGridOffset',
+    BASES_LAYOUT_SET_CONNECTOR_MODE: 'basesLayoutSetConnectorMode',
+    BASES_LAYOUT_INIT: 'basesLayoutInit',
+
     ENERGY_GROUP_CREATE: 'energyGroupCreate',
     ENERGY_GROUP_DELETE: 'energyGroupDelete',
     ENERGY_GROUP_RENAME: 'energyGroupRename',

@@ -53,6 +53,15 @@ export const SUB_IDS = {
     BASES_CORE_LEVELS: 'basesCoreLevels',
     BASES_STATS_SUMMARY: 'basesStatsSummary',
 
+    // Base Layout subscriptions
+    BASES_LAYOUT_BY_BASE_ID: 'basesLayoutByBaseId',
+    BASES_LAYOUT_BALANCE_RESULT_BY_BASE_ID: 'basesLayoutBalanceResultByBaseId',
+    BASES_LAYOUT_BALANCE_BY_BASE_ID: 'basesLayoutBalanceByBaseId',
+    BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID: 'basesLayoutBuildingStatesByBaseId',
+    BASES_LAYOUT_BUILDINGS_BY_BASE_ID: 'basesLayoutBuildingsByBaseId',
+    BASES_LAYOUT_CONNECTIONS_BY_BASE_ID: 'basesLayoutConnectionsByBaseId',
+    BASES_LAYOUT_CONNECTOR_MODE: 'baseLayoutConnectorMode',
+
     ENERGY_GROUPS_LIST: 'energyGroups',
     ENERGY_GROUPS_BY_ID_MAP: 'energyGroupsByIdMap',
 

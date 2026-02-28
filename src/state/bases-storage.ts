@@ -192,6 +192,11 @@ function normalizeBases(rawBases: unknown): Base[] {
             normalized.energyGroupId = rawEnergyGroupId;
         }
 
+        // Preserve layout data if present
+        if (base.layout && typeof base.layout === 'object') {
+            normalized.layout = base.layout as any; // Pass through layout data as-is
+        }
+
         normalizedBases.push(normalized);
     }
 

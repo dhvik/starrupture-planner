@@ -9,10 +9,12 @@ import type {
     AppState,
     Base,
     BaseBuilding,
+    BaseLayoutBuilding,
     EnergyGroup,
     Production,
     PlanRequiredBuilding,
     CorporationLevelSelection,
+    RailTier,
 } from './db';
 import { buildItemsMap, parseCorporations, extractCategories } from './data-utils';
 import { buildProductionFlow } from '../components/planner/core/productionFlowBuilder';
@@ -397,6 +399,214 @@ regEvent(EVENT_IDS.BASES_SET_ENERGY_GROUP, ({ draftDb }, baseId: string, groupId
 
     base.energyGroupId = groupId;
     return [persistBasesEffect(draftDb as AppState)];
+});
+
+//===============================================
+// Base Layout
+//===============================================
+
+/** Initialize layout if it doesn't exist */
+regEvent(EVENT_IDS.BASES_LAYOUT_INIT, ({ draftDb }, baseId: string) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base) return;
+    
+    if (!base.layout) {
+        base.layout = {
+            buildings: [],
+            connections: [],
+            gridOffsetX: 0,
+            gridOffsetY: 0,
+        };
+        return [persistBasesEffect(draftDb as AppState)];
+    }
+});
+
+/** Add a building to the layout */
+regEvent(EVENT_IDS.BASES_LAYOUT_ADD_BUILDING, 
+    ({ draftDb }, baseId: string, x: number, y: number, itemId: string, buildingId: string, recipeIndex: number) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base) return;
+    
+    // Initialize layout if needed
+    if (!base.layout) {
+        base.layout = {
+            buildings: [],
+            connections: [],
+            gridOffsetX: 0,
+            gridOffsetY: 0,
+        };
+    }
+    
+    // Check if position is already occupied
+    const occupied = base.layout.buildings.some(b => b.x === x && b.y === y);
+    if (occupied) {
+        console.warn('Position already occupied');
+        return;
+    }
+    
+    const layoutBuilding = {
+        id: createEntityId('layout_building'),
+        x,
+        y,
+        itemId,
+        buildingId,
+        recipeIndex,
+        count: 1,
+    };
+    
+    base.layout.buildings.push(layoutBuilding);
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Remove a building from the layout (and all its connections) */
+regEvent(EVENT_IDS.BASES_LAYOUT_REMOVE_BUILDING, ({ draftDb }, baseId: string, layoutBuildingId: string) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return;
+    
+    // Remove the building
+    base.layout.buildings = base.layout.buildings.filter(b => b.id !== layoutBuildingId);
+    
+    // Remove all connections involving this building
+    base.layout.connections = base.layout.connections.filter(
+        c => c.fromBuildingId !== layoutBuildingId && c.toBuildingId !== layoutBuildingId
+    );
+    
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Move a building to a new position */
+regEvent(EVENT_IDS.BASES_LAYOUT_MOVE_BUILDING, ({ draftDb }, baseId: string, layoutBuildingId: string, newX: number, newY: number) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return;
+    
+    const building = base.layout.buildings.find(b => b.id === layoutBuildingId);
+    if (!building) return;
+    
+    // Check if new position is occupied by another building
+    const occupied = base.layout.buildings.some(
+        b => b.id !== layoutBuildingId && b.x === newX && b.y === newY
+    );
+    if (occupied) {
+        console.warn('Position already occupied');
+        return;
+    }
+    
+    building.x = newX;
+    building.y = newY;
+    
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Update building count (1-8) */
+regEvent(EVENT_IDS.BASES_LAYOUT_UPDATE_BUILDING_COUNT, ({ draftDb }, baseId: string, layoutBuildingId: string, count: number) => {
+    const baseIndex = draftDb.basesList.findIndex((b: Base) => b.id === baseId);
+    if (baseIndex === -1) return;
+    
+    const base = draftDb.basesList[baseIndex];
+    if (!base.layout) return;
+    
+    const buildingIndex = base.layout.buildings.findIndex((b: BaseLayoutBuilding) => b.id === layoutBuildingId);
+    if (buildingIndex === -1) return;
+    
+    // Clamp count to 1-8
+    const newCount = Math.max(1, Math.min(8, Math.round(count)));
+    
+    // Use current() to get real values from Immer draft, then create new objects
+    const currentBase = current(base);
+    
+    const updatedBuildings = currentBase.layout!.buildings.map((b: BaseLayoutBuilding, idx: number) => 
+        idx === buildingIndex 
+            ? { ...b, count: newCount }
+            : b
+    );
+    
+    const updatedLayout = {
+        ...currentBase.layout!,
+        buildings: updatedBuildings
+    };
+    
+    const updatedBase = {
+        ...currentBase,
+        layout: updatedLayout
+    };
+    
+    // Replace the entire basesList array to ensure root subscription detects change
+    const newBasesList = [
+        ...draftDb.basesList.slice(0, baseIndex),
+        updatedBase,
+        ...draftDb.basesList.slice(baseIndex + 1)
+    ];
+    
+    draftDb.basesList = newBasesList;
+    
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Add a connection between two buildings */
+regEvent(EVENT_IDS.BASES_LAYOUT_ADD_CONNECTION, 
+    ({ draftDb }, baseId: string, fromBuildingId: string, toBuildingId: string, itemId: string, railTier: 1 | 2 | 3) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return;
+    
+    // Check if connection already exists
+    const exists = base.layout.connections.some(
+        c => c.fromBuildingId === fromBuildingId && 
+             c.toBuildingId === toBuildingId && 
+             c.itemId === itemId
+    );
+    
+    if (exists) {
+        console.warn('Connection already exists');
+        return;
+    }
+    
+    const connection = {
+        id: createEntityId('layout_connection'),
+        fromBuildingId,
+        toBuildingId,
+        itemId,
+        railTier,
+    };
+    
+    base.layout.connections.push(connection);
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Remove a connection */
+regEvent(EVENT_IDS.BASES_LAYOUT_REMOVE_CONNECTION, ({ draftDb }, baseId: string, connectionId: string) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return;
+    
+    base.layout.connections = base.layout.connections.filter(c => c.id !== connectionId);
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Update the rail tier of a connection */
+regEvent(EVENT_IDS.BASES_LAYOUT_UPDATE_CONNECTION_TIER, ({ draftDb }, baseId: string, connectionId: string, railTier: 1 | 2 | 3) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return;
+    
+    const connection = base.layout.connections.find(c => c.id === connectionId);
+    if (!connection) return;
+    
+    connection.railTier = railTier;
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Set the grid offset (pan position) */
+regEvent(EVENT_IDS.BASES_LAYOUT_SET_GRID_OFFSET, ({ draftDb }, baseId: string, offsetX: number, offsetY: number) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return;
+    
+    base.layout.gridOffsetX = offsetX;
+    base.layout.gridOffsetY = offsetY;
+    
+    return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Set connector mode for creating connections */
+regEvent(EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, ({ draftDb }, railTier: RailTier | null) => {
+    draftDb.baseLayoutConnectorMode = railTier;
 });
 
 //===============================================

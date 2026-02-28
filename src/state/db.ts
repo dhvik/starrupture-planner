@@ -152,6 +152,42 @@ export interface EnergyGroup {
     name: string;
 }
 
+// Base Layout types
+export type RailTier = 1 | 2 | 3;
+
+export interface BaseLayoutBuilding {
+    id: string;
+    x: number; // Grid X coordinate
+    y: number; // Grid Y coordinate
+    itemId: string; // Item being produced
+    buildingId: string; // References Building.id
+    recipeIndex: number; // Index of recipe in building.recipes array
+    count: number; // Number of building instances (1-8), acts as multiplier
+}
+
+export interface BaseLayoutConnection {
+    id: string;
+    fromBuildingId: string; // References BaseLayoutBuilding.id
+    toBuildingId: string; // References BaseLayoutBuilding.id
+    itemId: string; // Item being transported
+    railTier: RailTier; // 1 = 120/min, 2 = 240/min, 3 = 480/min
+}
+
+export interface BaseLayout {
+    buildings: BaseLayoutBuilding[];
+    connections: BaseLayoutConnection[];
+    gridOffsetX: number; // Pan offset for viewport
+    gridOffsetY: number; // Pan offset for viewport
+}
+
+export interface BaseLayoutBalance {
+    itemId: string;
+    totalProduction: number; // Sum of all production rates on layout
+    totalDemand: number; // Sum of all consumption rates on layout
+    surplus: number; // Positive when production > demand
+    deficit: number; // Positive when demand > production
+}
+
 export interface Base {
     id: string;
     name: string;
@@ -159,6 +195,7 @@ export interface Base {
     energyGroupId?: string; // References EnergyGroup.id for pooled energy grids
     buildings: BaseBuilding[];
     productions: Production[];
+    layout?: BaseLayout; // Optional graphical layout for production planning
 }
 
 /** Indexed bases collection keyed by base id. */
@@ -211,6 +248,7 @@ export interface AppState {
     basesList: Base[];
     energyGroups: EnergyGroup[];
     basesSelectedBaseId: string | null;
+    baseLayoutConnectorMode: RailTier | null; // Active connector mode for creating connections
     uiConfirmationDialog: ConfirmationDialog;
     productionPlanModalState: CreateProductionPlanModalState;
 }
@@ -245,6 +283,7 @@ const appState: AppState = {
     plannerSelectedCorporationLevel: null,
     plannerTargetAmount: 60,
     basesSelectedBaseId: null,
+    baseLayoutConnectorMode: null,
     uiConfirmationDialog: {
         isOpen: false,
         title: '',

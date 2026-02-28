@@ -2,15 +2,17 @@ import { dispatch, useSubscription } from '@flexsurfer/reflex';
 import { SUB_IDS } from '../../../state/sub-ids';
 import type { BaseDetailStats } from '../types';
 import { EVENT_IDS } from '../../../state/event-ids';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { Base } from '../../../state/db';
 import { EnergyGroupSelector } from './EnergyGroupSelector';
+import BaseLayoutBalanceSummary from '../layout/components/BaseLayoutBalanceSummary';
 
 export const BaseCoreInfo: React.FC = () => {
 
   const detailStats = useSubscription<BaseDetailStats | null>([SUB_IDS.BASES_SELECTED_BASE_DETAIL_STATS]);
   const coreLevels = useSubscription<{ level: number; heatCapacity: number }[]>([SUB_IDS.BASES_CORE_LEVELS]);
   const selectedBase = useSubscription<Base | null>([SUB_IDS.BASES_SELECTED_BASE]);
+  const [isLayoutBalanceExpanded, setIsLayoutBalanceExpanded] = useState(true);
 
   const onBack = useCallback(() => {
     dispatch([EVENT_IDS.BASES_SET_SELECTED_BASE, null]);
@@ -18,6 +20,10 @@ export const BaseCoreInfo: React.FC = () => {
 
   const onCoreLeveChange = useCallback((level: number) => {
     dispatch([EVENT_IDS.BASES_SET_CORE_LEVEL, level]);
+  }, []);
+
+  const toggleLayoutBalance = useCallback(() => {
+    setIsLayoutBalanceExpanded(prev => !prev);
   }, []);
   
   // Early return if data not available
@@ -116,6 +122,25 @@ export const BaseCoreInfo: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Layout Balance Section */}
+      {selectedBase?.layout && (
+        <div className="mt-3 border-t border-base-300 pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-sm">Production Balance</h3>
+            <button
+              className="btn btn-xs btn-ghost"
+              onClick={toggleLayoutBalance}
+              title={isLayoutBalanceExpanded ? "Collapse" : "Expand"}
+            >
+              {isLayoutBalanceExpanded ? "▼" : "▶"}
+            </button>
+          </div>
+          {isLayoutBalanceExpanded && (
+            <BaseLayoutBalanceSummary baseId={selectedBase.id} />
+          )}
+        </div>
+      )}
     </div>
   );
 };

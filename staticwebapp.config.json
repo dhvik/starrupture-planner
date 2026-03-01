@@ -1,0 +1,23 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/*.js", "/*.css", "/*.json", "/*.ico", "/*.png", "/*.jpg", "/*.svg"]
+  },
+  "mimeTypes": {
+    ".js": "application/javascript",
+    ".mjs": "application/javascript",
+    ".json": "application/json"
+  },
+  "globalHeaders": {
+    "content-security-policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;"
+  },
+  "routes": [
+    {
+      "route": "/*",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      },
+      "allowedRoles": ["anonymous"]
+    }
+  ]
+}

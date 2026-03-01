@@ -3,9 +3,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   // Use base path for GitHub Pages, root for Azure Static Web Apps
-  base: process.env.VITE_BASE_PATH || '/starrupture-planner/',
+  base: mode === 'azure' ? '/' : '/starrupture-planner/',
   plugins: [react(), tailwindcss()],
   publicDir: 'assets',
   test: {
@@ -13,4 +13,4 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
   },
-})
+}))

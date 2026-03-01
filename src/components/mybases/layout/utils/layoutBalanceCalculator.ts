@@ -22,6 +22,7 @@ export interface BuildingProductionState {
 export interface LayoutBalanceResult {
     balances: BaseLayoutBalance[];
     buildingStates: Map<string, BuildingProductionState>;
+    _timestamp?: number; // Forces unique object identity for Reflex reactivity
 }
 
 /**

@@ -48,25 +48,75 @@ The project uses a **unidirectional data flow** pattern similar to Re-frame/Redu
 User Action → Event → Event Handler → State Update → Subscriptions → UI Update
 ```
 
+**Reflex Resources:**
+- Main docs: [reflex.js.org/docs](https://reflex.js.org/docs)
+- Best practices: [reflex.js.org/docs/best-practices.html](https://reflex.js.org/docs/best-practices.html)
+- Packages: [@flexsurfer/reflex](https://www.npmjs.com/package/@flexsurfer/reflex), [@flexsurfer/reflex-devtools](https://www.npmjs.com/package/@flexsurfer/reflex-devtools)
+
+#### State Structure
+
+```
+src/state/
+  db.ts              # App state initialization and types
+  event-ids.ts       # Event constant IDs
+  events.ts          # Event handlers
+  effect-ids.ts      # Effect constant IDs
+  effects.ts         # Side effect implementations
+  sub-ids.ts         # Subscription constant IDs
+  subs.ts            # Subscription computations
+```
+
+**State Shape Principles:**
+- Grow horizontally (new top-level feature keys), avoid deep nesting
+- Normalize entity-like data (`byId` maps + id arrays) for fast lookup
+- Keep UI state explicit and separate from domain entities
+- If using `Map`/`Set` in DB, call `enableMapSet()` before `initAppDb`
+
 #### Key Concepts:
 
 1. **Events** (`src/state/events.ts`, `src/state/event-ids.ts`)
    - Dispatched via `dispatch([EVENT_IDS.EVENT_NAME, ...payload])`
-   - Registered via `regEvent(EVENT_IDS.EVENT_NAME, handler)`
+   - Registered via `regEvent(EVENT_IDS.EVENT_NAME, handler, coeffects?)`
    - Handler receives current state, returns updated state
-   - Pure functions that transform state immutably
+   - **Must be synchronous** and focused on state transitions
+   - **Pure functions** that transform state immutably
+   - Validate inputs and guard clauses first; return early on invalid state
+   - Never perform async/API/localStorage work directly in events
+   - Return effect tuples for side effects: `return [[EFFECT_IDS.SAVE, data]]`
+   - When sending mutated draft data to effects, **always use `current(...)`**
+   - Events should read all required data from `draftDb` or coeffects — never rely on callers passing subscription-derived state
+   - Dispatch calls from views should only carry user intent (IDs, input values, flags)
+
+   **Event Naming:**
+   - Keep exported constant keys in `UPPER_SNAKE_CASE`
+   - Use namespaced string values: `feature/action` (example: `bases/create`)
+   - Keep key and value aligned:
+     - `BASES_CREATE` → `bases/create`
+     - `PRODUCTION_PLAN_ADD_BUILDINGS_TO_BASE` → `production_plan/add_buildings_to_base`
 
 2. **Subscriptions** (`src/state/subs.ts`, `src/state/sub-ids.ts`)
    - Query state via `useSubscription([SUB_IDS.SUB_NAME, ...params])`
-   - Registered via `regSub(SUB_IDS.SUB_NAME, computation)`
+   - Registered via `regSub(SUB_IDS.SUB_NAME, computation, dependencies?)`
+   - Define root subscriptions first: `regSub(id, "pathKey")`
+   - Build derived subscriptions from other subscriptions only
+   - Use parameterized subscriptions for by-id and section-specific queries
+   - **Keep subscriptions deterministic and lightweight**
+   - **Subscriptions must return data shaped and ready for direct view consumption**
+     - All filtering, sorting, formatting, and joining should happen in the subscription layer
+     - Components should never transform or reshape subscription data
+   - Move heavy computations to events (precompute once, read many)
+   - Avoid repeated expensive derivations in hot subscriptions
    - Can chain subscriptions (subscribe to other subscriptions)
    - Automatically recompute when dependencies change
 
 3. **Effects/Coeffects** (`src/state/effects.ts`, `src/state/effect-ids.ts`)
-   - **Effects**: Side effects (localStorage, DOM updates)
-   - **Coeffects**: Inject external data into event handlers
-   - Registered via `regEffect()` / `regCoeffect()`
+   - **Effects**: Side effects (localStorage, HTTP, timers, analytics, navigation)
+   - **Coeffects**: Inject external data into event handlers (time, random, env, localStorage)
+   - Registered via `regEffect(id, fn)` / `regCoeffect(id, fn)`
    - Keep event handlers pure by isolating side effects
+   - Effects should be small, defensive, and fail-soft (log, do not crash app state flow)
+   - Put all I/O here: localStorage, HTTP, timers, analytics, navigation
+   - Prefer deterministic coeffects instead of direct globals for testability
 
 4. **Database** (`src/state/db.ts`)
    - Central application state defined via `initAppDb()`
@@ -130,6 +180,27 @@ export function useFeatureData() {
   return { data, updateData };
 }
 ```
+
+### React Component Contract with Reflex
+
+**Components should only:**
+- Subscribe to minimal required data
+- Dispatch events on user intent (pass only user-provided values — e.g. input text, selected id)
+- Never forward subscription data back through dispatch; event handlers read from DB themselves
+- Render UI
+
+**Component State Rules:**
+- Use direct React hooks (`useState`, `useReducer`) only for local/ephemeral component concerns:
+  - Temporary form/input draft state before dispatch
+  - UI-only toggles scoped to one component (hover/open/focus)
+  - Refs, DOM measurement, animation lifecycle
+- Do not mirror Reflex global state in `useState`/`useReducer`
+- If state is shared, persisted, or business-relevant, keep it in Reflex DB via events/subscriptions
+- Never transform, filter, sort, or reshape subscription data inside a component
+  - If the view needs a different shape, create a dedicated subscription that returns it ready to render
+- Keep `useEffect` thin in components; business side effects belong in Reflex effects/coeffects
+- Do not place business rules/validation pipelines in component handlers
+- Avoid over-subscription (row/item components should not subscribe to full collections)
 
 ## Code Conventions
 
@@ -304,13 +375,32 @@ npm run deploy       # Deploy to GitHub Pages
 
 ## Best Practices
 
-### State Management
+### State Management (Reflex)
 
 1. **Keep event handlers pure** - No side effects in handlers
 2. **Use coeffects for external data** - Inject data via coeffects
 3. **Return effects for side effects** - Return effect tuples from handlers
 4. **Subscribe at the right level** - Subscribe in components that use the data
 5. **Avoid over-subscribing** - Combine related subscriptions
+6. **Events read from DB** - Never pass subscription data through dispatch; events should read all required data from `draftDb` or coeffects
+7. **Use `current(...)` for effects** - When sending mutated draft data to effects, always use `current(...)`
+8. **Avoid unnecessary object recreation** - Don't use `{...obj}` or `[...arr]` when no actual change is needed
+9. **Subscriptions return view-ready data** - All filtering, sorting, formatting should happen in subscriptions, not components
+10. **Move heavy computations to events** - Precompute once in events, read many times in subscriptions
+
+### AI Code Generation Checklist
+
+Before finalizing AI-generated code, verify:
+- [ ] IDs added/updated in all relevant `*-ids.ts` files
+- [ ] Event namespaced and descriptive (`feature/action` pattern)
+- [ ] Side effects isolated to effects/coeffects
+- [ ] `current(...)` used when passing draft-derived data to effects
+- [ ] No unnecessary object/array recreation in events
+- [ ] Expensive work not placed in frequently re-run subscriptions
+- [ ] Subscriptions return view-ready data; components do not reshape subscription output
+- [ ] Dispatch calls from components pass only user intent, not subscription data
+- [ ] Events read all needed data from DB themselves
+- [ ] Tests added for new event/subscription behavior
 
 ### Performance
 
@@ -400,6 +490,8 @@ npm run deploy       # Deploy to GitHub Pages
 
 - [React Documentation](https://react.dev/)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Reflex Documentation](https://reflex.js.org/docs)
+- [Reflex Best Practices](https://reflex.js.org/docs/best-practices.html)
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - [DaisyUI](https://daisyui.com/)
 - [ReactFlow](https://reactflow.dev/)

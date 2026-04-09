@@ -49,7 +49,7 @@ export const BaseCoreInfo: React.FC = () => {
           {/* Core Icon */}
           <div className="flex-shrink-0">
             <img
-              src="/icons/buildings/base_core.webp"
+              src="./icons/buildings/base_core.webp"
               alt="Base Core"
               className="w-12 h-12 sm:w-16 sm:h-16 object-contain"
               width={64}

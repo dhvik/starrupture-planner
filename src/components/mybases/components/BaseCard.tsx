@@ -107,7 +107,7 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
         <div className="flex items-start gap-6 mb-4">
           <div className="flex-shrink-0 flex flex-col items-center">
             <img
-              src="/icons/buildings/base_core.webp"
+              src="./icons/buildings/base_core.webp"
               alt="Base Core"
               className="w-20 h-20 object-contain"
               width={80}

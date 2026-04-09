@@ -1,13 +1,33 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactFlow, Background, Controls, Panel, useNodesState, useEdgesState, useReactFlow, type Node, type Edge, type Connection, ConnectionLineType, MarkerType, ConnectionMode } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { useSubscription, dispatch } from '@flexsurfer/reflex';
-import { SUB_IDS } from '../../../../state/sub-ids';
-import { EVENT_IDS } from '../../../../state/event-ids';
-import type { BaseLayoutBuilding, BaseLayoutConnection, Building, RailTier } from '../../../../state/db';
-import { gridToPixels, GRID_CELL_SIZE } from '../utils/gridUtils';
-import LayoutBuildingNode from './LayoutBuildingNode';
-import LayoutConnectionEdge from './LayoutConnectionEdge';
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  Panel,
+  useNodesState,
+  useEdgesState,
+  useReactFlow,
+  type Node,
+  type Edge,
+  type Connection,
+  ConnectionLineType,
+  MarkerType,
+  ConnectionMode,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { useSubscription, dispatch } from "@flexsurfer/reflex";
+import { SUB_IDS } from "../../../../state/sub-ids";
+import { EVENT_IDS } from "../../../../state/event-ids";
+import type {
+  BaseLayoutBuilding,
+  BaseLayoutConnection,
+  Building,
+  RailTier,
+} from "../../../../state/db";
+import type { ConnectionTransferRate } from "../utils/layoutBalanceCalculator";
+import { gridToPixels, GRID_CELL_SIZE } from "../utils/gridUtils";
+import LayoutBuildingNode from "./LayoutBuildingNode";
+import LayoutConnectionEdge from "./LayoutConnectionEdge";
 
 interface LayoutCanvasProps {
   baseId: string;
@@ -23,27 +43,44 @@ const edgeTypes = {
 };
 
 const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
-  const theme = useSubscription<'light' | 'dark'>([SUB_IDS.UI_THEME]);
-  const buildings = useSubscription<BaseLayoutBuilding[]>([SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID, baseId]);
-  const connections = useSubscription<BaseLayoutConnection[]>([SUB_IDS.BASES_LAYOUT_CONNECTIONS_BY_BASE_ID, baseId]);
-  const buildingsById = useSubscription<Record<string, Building>>([SUB_IDS.BUILDINGS_BY_ID_MAP]);
-  const connectorMode = useSubscription<RailTier | null>([SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE]);
+  const theme = useSubscription<"light" | "dark">([SUB_IDS.UI_THEME]);
+  const buildings = useSubscription<BaseLayoutBuilding[]>([
+    SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID,
+    baseId,
+  ]);
+  const connections = useSubscription<BaseLayoutConnection[]>([
+    SUB_IDS.BASES_LAYOUT_CONNECTIONS_BY_BASE_ID,
+    baseId,
+  ]);
+  const buildingsById = useSubscription<Record<string, Building>>([
+    SUB_IDS.BUILDINGS_BY_ID_MAP,
+  ]);
+  const connectorMode = useSubscription<RailTier | null>([
+    SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
+  ]);
+  const transferRates = useSubscription<Record<string, ConnectionTransferRate>>(
+    [SUB_IDS.BASES_LAYOUT_CONNECTION_TRANSFER_RATES, baseId],
+  );
+  const selectedConnectionId = useSubscription<string | null>([
+    SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_ID,
+  ]);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const hasInitializedView = useRef(false);
-  const [connectionDrag, setConnectionDrag] = useState<{ fromNodeId: string } | null>(null);
+  const [connectionDrag, setConnectionDrag] = useState<{
+    fromNodeId: string;
+  } | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   // Convert layout buildings to ReactFlow nodes
   useEffect(() => {
-
     const newNodes: Node[] = buildings.map((building) => {
       const pixelPos = gridToPixels(building.x, building.y);
       const isConnectionSource = connectionDrag?.fromNodeId === building.id;
       return {
         id: building.id,
-        type: 'layoutBuilding',
+        type: "layoutBuilding",
         position: pixelPos,
         data: {
           building,
@@ -55,7 +92,6 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         selectable: true,
       };
     });
-    
 
     setNodes(newNodes);
   }, [buildings, baseId, connectorMode, connectionDrag, setNodes]);
@@ -74,23 +110,30 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   // Convert layout connections to ReactFlow edges
   useEffect(() => {
     const newEdges: Edge[] = connections.map((connection) => {
+      const rates = transferRates?.[connection.id];
+      const isSelected = selectedConnectionId === connection.id;
       return {
         id: connection.id,
         source: connection.fromBuildingId,
         target: connection.toBuildingId,
-        type: 'layoutConnection',
+        type: "layoutConnection",
         data: {
           connection,
           baseId,
+          transferRate: rates,
+          selected: isSelected,
         },
-        animated: true,
+        style: {
+          stroke: "#888",
+          strokeWidth: 2,
+        },
         markerEnd: {
           type: MarkerType.ArrowClosed,
         },
       };
     });
     setEdges(newEdges);
-  }, [connections, baseId, setEdges]);
+  }, [connections, baseId, transferRates, selectedConnectionId, setEdges]);
 
   // Handle node drag end - update building position
   const handleNodeDragStop = useCallback(
@@ -110,7 +153,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         gridY,
       ]);
     },
-    [baseId]
+    [baseId],
   );
 
   // Handle connection creation
@@ -119,7 +162,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       if (!connection.source || !connection.target) return;
 
       // Find source building
-      const sourceBuilding = buildings.find(b => b.id === connection.source);
+      const sourceBuilding = buildings.find((b) => b.id === connection.source);
       if (!sourceBuilding) return;
 
       // Get building definition and recipe
@@ -148,7 +191,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       // Clear connection drag state
       setConnectionDrag(null);
     },
-    [baseId, buildings, buildingsById, connectorMode]
+    [baseId, buildings, buildingsById, connectorMode],
   );
 
   // Handle drop from palette
@@ -156,7 +199,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     (event: React.DragEvent) => {
       event.preventDefault();
 
-      const data = event.dataTransfer.getData('application/reactflow');
+      const data = event.dataTransfer.getData("application/reactflow");
       if (!data) return;
 
       try {
@@ -183,16 +226,16 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
           recipeIndex,
         ]);
       } catch (error) {
-        console.error('Failed to parse drag data:', error);
+        console.error("Failed to parse drag data:", error);
       }
     },
-    [baseId, screenToFlowPosition]
+    [baseId, screenToFlowPosition],
   );
 
   // Allow drop
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.dropEffect = "move";
   }, []);
 
   // Handle node click when in connector mode
@@ -218,15 +261,37 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         setConnectionDrag(null);
       }
     },
-    [connectorMode, connectionDrag, handleConnect]
+    [connectorMode, connectionDrag, handleConnect],
   );
 
-  // Handle pane click - cancel connection drag
+  // Handle pane click - cancel connection drag and deselect connection
   const handlePaneClick = useCallback(() => {
     if (connectionDrag) {
       setConnectionDrag(null);
     }
-  }, [connectionDrag]);
+    if (selectedConnectionId) {
+      dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, null]);
+    }
+  }, [connectionDrag, selectedConnectionId]);
+
+  // Handle edge click - select connection
+  const handleEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, edge.id]);
+    },
+    [],
+  );
+
+  // Handle keyboard events - Delete key removes selected connection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Delete" && selectedConnectionId) {
+        dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION]);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedConnectionId]);
 
   return (
     <div className={className}>
@@ -238,6 +303,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         onNodeDragStop={handleNodeDragStop}
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -250,11 +316,16 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         minZoom={0.1}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        connectionMode={connectorMode ? ConnectionMode.Loose : ConnectionMode.Strict}
+        connectionMode={
+          connectorMode ? ConnectionMode.Loose : ConnectionMode.Strict
+        }
       >
         <Background gap={GRID_CELL_SIZE} size={2} />
         <Controls />
-        <Panel position="top-right" className="bg-base-200 p-2 rounded-lg shadow-lg text-sm">
+        <Panel
+          position="top-right"
+          className="bg-base-200 p-2 rounded-lg shadow-lg text-sm"
+        >
           <div className="text-base-content/70">
             <div>Zoom: Scroll wheel</div>
             <div>Pan: Click & drag background</div>
@@ -266,8 +337,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
                 </div>
                 <div className="text-xs">
                   {connectionDrag
-                    ? 'Click on target building'
-                    : 'Click on source building'}
+                    ? "Click on target building"
+                    : "Click on source building"}
                 </div>
               </div>
             )}

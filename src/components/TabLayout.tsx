@@ -1,14 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ItemsPage from './ItemsPage';
 import RecipesPage from './RecipesPage';
 import CorporationsPage from './CorporationsPage';
 import MyBasesPage from './MyBasesPage';
+import PlannerPage from './PlannerPage';
 import { ThemeToggle, GitHubButton, DiscordButton, VersionSelector, ConfirmationDialog } from './ui';
 import { useNavigationSync } from '../hooks/useNavigationSync';
-
-// Lazy load the PlannerPage to reduce initial bundle size
-const PlannerPage = lazy(() => import('./PlannerPage'));
 import { dispatch, useSubscription } from '@flexsurfer/reflex';
 import { SUB_IDS } from '../state/sub-ids';
 import { EVENT_IDS } from '../state/event-ids';
@@ -65,6 +63,10 @@ const TabLayout = () => {
     if (path) {
       navigate(path);
       dispatch([EVENT_IDS.UI_SET_ACTIVE_TAB, tabId]);
+      if (tabId === 'mybases') {
+        dispatch([EVENT_IDS.PRODUCTION_PLAN_MODAL_CLOSE]);
+        dispatch([EVENT_IDS.BASES_SET_SELECTED_BASE, null]);
+      }
     }
   };
 
@@ -77,15 +79,7 @@ const TabLayout = () => {
       case 'corporations':
         return <CorporationsPage />;
       case 'planner':
-        return (
-          <Suspense fallback={
-            <div className="flex items-center justify-center h-full">
-              <div className="loading loading-spinner loading-lg text-primary"></div>
-            </div>
-          }>
-            <PlannerPage />
-          </Suspense>
-        );
+        return <PlannerPage />;
       case 'mybases':
         return <MyBasesPage />;
       default:
@@ -100,11 +94,17 @@ const TabLayout = () => {
           {/* Mobile Layout */}
           <div className="navbar-start lg:hidden flex items-center">
             <img
-              src="/logo_black_bg.jpg"
+              src="/logo_black_bg.webp"
               alt="Rupture Planner Logo"
               className="h-4 w-auto rounded shadow-sm"
+              width={16}
+              height={16}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
               }}
             />
             <h1 className="text-sm font-bold mr-2">Rupture Planner</h1>
@@ -114,11 +114,17 @@ const TabLayout = () => {
           {/* Desktop Layout */}
           <div className="navbar-start hidden lg:flex items-center gap-3">
             <img
-              src="/logo_black_bg.jpg"
+              src="/logo_black_bg.webp"
               alt="Rupture Planner Logo"
               className="h-8 w-auto rounded shadow-sm"
+              width={32}
+              height={32}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
               }}
             />
             <h1 className="text-xl font-bold">Rupture Planner</h1>

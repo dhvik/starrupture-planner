@@ -40,18 +40,23 @@ export const BaseCoreInfo: React.FC = () => {
         <div className="flex items-start gap-2 sm:gap-3 w-full sm:w-auto sm:flex-1 min-w-0">
           {/* Back Button */}
           <button
-            className="btn btn-sm btn-ghost flex-shrink-0"
+            className="btn btn-sm btn-outline gap-1 flex-shrink-0"
             onClick={onBack}
           >
-            ←
+            ← Back
           </button>
 
           {/* Core Icon */}
           <div className="flex-shrink-0">
             <img
-              src="/icons/buildings/base_core.png"
+              src="/icons/buildings/base_core.webp"
               alt="Base Core"
               className="w-12 h-12 sm:w-16 sm:h-16 object-contain"
+              width={64}
+              height={64}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';

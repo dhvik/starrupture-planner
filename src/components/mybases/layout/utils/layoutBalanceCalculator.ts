@@ -1,8 +1,10 @@
 import type {
   BaseLayout,
   BaseLayoutBalance,
+  BaseLayoutBuilding,
   BuildingsByIdMap,
   BaseLayoutConnection,
+  DistributionMode,
 } from "../../../../state/db";
 
 /**
@@ -34,17 +36,70 @@ export interface LayoutBalanceResult {
   _timestamp?: number; // Forces unique object identity for Reflex reactivity
 }
 
+interface BuildingInfo {
+  x: number;
+  y: number;
+  distributionMode: DistributionMode;
+}
+
+/**
+ * Distributes a total amount equally across slots that each have a maximum capacity,
+ * using the water-filling algorithm. Connections that are capped give their excess
+ * back to the remaining active connections.
+ */
+function waterFill(total: number, maxes: number[]): number[] {
+  const n = maxes.length;
+  if (n === 0) return [];
+
+  const result = new Array<number>(n).fill(0);
+  let remaining = total;
+  // Indices of connections that haven't been capped yet
+  let activeIndices = maxes.map((_, i) => i);
+
+  while (remaining > 0.001 && activeIndices.length > 0) {
+    const share = remaining / activeIndices.length;
+    let allocated = 0;
+    const nextActive: number[] = [];
+
+    for (const i of activeIndices) {
+      const canTake = maxes[i] - result[i];
+      if (canTake <= share + 0.001) {
+        // This connection is at or below its cap — give it everything it can take
+        result[i] = maxes[i];
+        allocated += canTake;
+      } else {
+        // This connection can absorb the full equal share
+        result[i] += share;
+        allocated += share;
+        nextActive.push(i);
+      }
+    }
+
+    remaining -= allocated;
+    activeIndices = nextActive;
+  }
+
+  return result;
+}
+
 /**
  * Calculates the production/demand balance for all items in a layout.
  *
  * Model:
  * 1. Each building's production is scaled by the minimum input fulfillment ratio
  *    (e.g. if it gets 10/100 of one input, it produces at 10%).
- * 2. A building's actual output is distributed across outbound connectors,
- *    trying to satisfy each target's full input demand, limited by rail capacity.
+ * 2. A building's actual output is distributed across outbound connectors
+ *    according to the building's distributionMode.
  * 3. Iterative convergence handles cascading production chains.
  * 4. Surplus = production − amount transferred out via connectors.
  *    Deficit = full demand − amount transferred in via connectors.
+ *
+ * Distribution modes (per building):
+ * - "first-served": fill connectors in index order until output is exhausted.
+ * - "shortest-path": same as first-served but sorted by Euclidean distance
+ *   (closest target first).
+ * - "equal": divide output equally across connectors using water-filling,
+ *   so capacity-limited connections give excess to the others.
  *
  * @param layout The base layout with buildings and connections
  * @param buildingsById Map of building definitions by ID
@@ -59,6 +114,16 @@ export function calculateLayoutBalance(
       balances: [],
       buildingStates: new Map(),
     };
+  }
+
+  // Build a lookup for each layout building's position and distribution mode
+  const buildingInfoMap = new Map<string, BuildingInfo>();
+  for (const b of layout.buildings) {
+    buildingInfoMap.set(b.id, {
+      x: b.x,
+      y: b.y,
+      distributionMode: b.distributionMode ?? "first-served",
+    });
   }
 
   // Phase 1: Build production state for each building
@@ -120,6 +185,7 @@ export function calculateLayoutBalance(
     const { suppliedPerInput } = allocateConnectors(
       layout.connections,
       buildingStates,
+      buildingInfoMap,
     );
 
     // Update each building's supply, production factor, and output
@@ -164,6 +230,7 @@ export function calculateLayoutBalance(
   const { consumedPerSource, suppliedPerInput } = allocateConnectors(
     layout.connections,
     buildingStates,
+    buildingInfoMap,
   );
 
   for (const [buildingId, state] of buildingStates) {
@@ -245,9 +312,14 @@ export interface ConnectionTransferRate {
 }
 
 /**
- * Allocates output across connectors, distributing each source building's
- * actualOutputRate to outbound connectors limited by rail capacity and
- * target's full requiredRate.
+ * Allocates each source building's actualOutputRate across its outbound connectors,
+ * applying the building's distributionMode:
+ *
+ * - "first-served": fill connectors in their natural index order.
+ * - "shortest-path": sort connectors by ascending Euclidean distance to target,
+ *   then fill in order (closest first).
+ * - "equal": distribute remaining output equally via water-filling so capacity-
+ *   constrained connectors give their unused share to others.
  *
  * Returns:
  * - consumedPerSource: total output consumed via connectors per source building
@@ -257,6 +329,7 @@ export interface ConnectionTransferRate {
 function allocateConnectors(
   connections: BaseLayoutConnection[],
   buildingStates: Map<string, BuildingProductionState>,
+  buildingInfoMap: Map<string, BuildingInfo>,
 ): {
   consumedPerSource: Map<string, number>;
   suppliedPerInput: Map<string, number>;
@@ -284,47 +357,111 @@ function allocateConnectors(
       continue;
     }
 
-    let remainingOutput = sourceState.actualOutputRate;
+    const sourceInfo = buildingInfoMap.get(sourceBuildingId);
+    const distributionMode = sourceInfo?.distributionMode ?? "first-served";
 
-    for (const conn of outbound) {
-      const railCapacity = RAIL_CAPACITIES[conn.railTier] || 0;
+    // Build an ordered list of connections to process
+    let orderedConnections: BaseLayoutConnection[];
 
-      // Target's remaining demand for this item (full requiredRate, not scaled)
-      // If no target or no matching input requirement, transfer 0
-      const targetState = buildingStates.get(conn.toBuildingId);
-      let targetRemainingInput = 0;
+    if (distributionMode === "shortest-path" && sourceInfo) {
+      // Sort by Euclidean distance to each target building (ascending)
+      orderedConnections = [...outbound].sort((a, b) => {
+        const infoA = buildingInfoMap.get(a.toBuildingId);
+        const infoB = buildingInfoMap.get(b.toBuildingId);
+        const distA = infoA
+          ? Math.sqrt(
+              (infoA.x - sourceInfo.x) ** 2 + (infoA.y - sourceInfo.y) ** 2,
+            )
+          : Infinity;
+        const distB = infoB
+          ? Math.sqrt(
+              (infoB.x - sourceInfo.x) ** 2 + (infoB.y - sourceInfo.y) ** 2,
+            )
+          : Infinity;
+        return distA - distB;
+      });
+    } else {
+      orderedConnections = outbound;
+    }
 
-      if (targetState) {
-        const inputReq = targetState.inputRequirements.find(
-          (r) => r.itemId === conn.itemId,
-        );
-        if (inputReq) {
-          const inboundKey = `${conn.toBuildingId}:${conn.itemId}`;
-          const alreadyAllocated = suppliedPerInput.get(inboundKey) || 0;
-          targetRemainingInput = Math.max(
-            0,
-            inputReq.requiredRate - alreadyAllocated,
+    if (distributionMode === "equal") {
+      // Compute the maximum each connection can absorb given rail capacity
+      // and the target's remaining unfilled demand
+      const maxes = orderedConnections.map((conn) => {
+        const railCapacity = RAIL_CAPACITIES[conn.railTier] || 0;
+        const targetState = buildingStates.get(conn.toBuildingId);
+        let targetRemainingInput = 0;
+        if (targetState) {
+          const inputReq = targetState.inputRequirements.find(
+            (r) => r.itemId === conn.itemId,
           );
+          if (inputReq) {
+            const inboundKey = `${conn.toBuildingId}:${conn.itemId}`;
+            const alreadyAllocated = suppliedPerInput.get(inboundKey) || 0;
+            targetRemainingInput = Math.max(
+              0,
+              inputReq.requiredRate - alreadyAllocated,
+            );
+          }
         }
+        return Math.min(railCapacity, targetRemainingInput);
+      });
+
+      // Distribute the source's output equally using water-filling
+      const rates = waterFill(sourceState.actualOutputRate, maxes);
+
+      for (let i = 0; i < orderedConnections.length; i++) {
+        const conn = orderedConnections[i];
+        const rate = rates[i];
+        perConnection.set(conn.id, rate);
+        consumedPerSource.set(
+          sourceBuildingId,
+          (consumedPerSource.get(sourceBuildingId) || 0) + rate,
+        );
+        const inboundKey = `${conn.toBuildingId}:${conn.itemId}`;
+        suppliedPerInput.set(
+          inboundKey,
+          (suppliedPerInput.get(inboundKey) || 0) + rate,
+        );
       }
+    } else {
+      // "first-served" and "shortest-path" both fill greedily in order
+      let remainingOutput = sourceState.actualOutputRate;
 
-      const rate = Math.min(
-        railCapacity,
-        remainingOutput,
-        targetRemainingInput,
-      );
-      perConnection.set(conn.id, rate);
+      for (const conn of orderedConnections) {
+        const railCapacity = RAIL_CAPACITIES[conn.railTier] || 0;
 
-      remainingOutput -= rate;
-      consumedPerSource.set(
-        sourceBuildingId,
-        (consumedPerSource.get(sourceBuildingId) || 0) + rate,
-      );
-      const inboundKey = `${conn.toBuildingId}:${conn.itemId}`;
-      suppliedPerInput.set(
-        inboundKey,
-        (suppliedPerInput.get(inboundKey) || 0) + rate,
-      );
+        const targetState = buildingStates.get(conn.toBuildingId);
+        let targetRemainingInput = 0;
+
+        if (targetState) {
+          const inputReq = targetState.inputRequirements.find(
+            (r) => r.itemId === conn.itemId,
+          );
+          if (inputReq) {
+            const inboundKey = `${conn.toBuildingId}:${conn.itemId}`;
+            const alreadyAllocated = suppliedPerInput.get(inboundKey) || 0;
+            targetRemainingInput = Math.max(
+              0,
+              inputReq.requiredRate - alreadyAllocated,
+            );
+          }
+        }
+
+        const rate = Math.min(railCapacity, remainingOutput, targetRemainingInput);
+        perConnection.set(conn.id, rate);
+
+        remainingOutput -= rate;
+        consumedPerSource.set(
+          sourceBuildingId,
+          (consumedPerSource.get(sourceBuildingId) || 0) + rate,
+        );
+        const inboundKey = `${conn.toBuildingId}:${conn.itemId}`;
+        suppliedPerInput.set(
+          inboundKey,
+          (suppliedPerInput.get(inboundKey) || 0) + rate,
+        );
+      }
     }
   }
 
@@ -335,7 +472,7 @@ function allocateConnectors(
  * Calculates the current transfer rate for each connection.
  *
  * Distributes each source building's actualOutputRate across outbound
- * connectors, limited by rail capacity and target's full input demand.
+ * connectors according to each building's distributionMode.
  */
 export function calculateConnectionTransferRates(
   layout: BaseLayout | undefined,
@@ -347,9 +484,19 @@ export function calculateConnectionTransferRates(
     return result;
   }
 
+  const buildingInfoMap = new Map<string, BuildingInfo>();
+  for (const b of layout.buildings) {
+    buildingInfoMap.set(b.id, {
+      x: b.x,
+      y: b.y,
+      distributionMode: b.distributionMode ?? "first-served",
+    });
+  }
+
   const { perConnection } = allocateConnectors(
     layout.connections,
     buildingStates,
+    buildingInfoMap,
   );
 
   for (const conn of layout.connections) {

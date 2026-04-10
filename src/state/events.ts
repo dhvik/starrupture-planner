@@ -16,6 +16,7 @@ import type {
   CorporationLevelSelection,
   RailTier,
   LayoutBuildingType,
+  DistributionMode,
 } from "./db";
 import {
   buildItemsMap,
@@ -1268,6 +1269,21 @@ regEvent(
     // Set mode for all buildings in the layout
     base.layout.buildings.forEach((building) => {
       building.mode = mode;
+    });
+
+    return [persistBasesEffect(draftDb as AppState)];
+  },
+);
+
+/** Set the output distribution mode for all buildings in a layout */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_DISTRIBUTION_MODE,
+  ({ draftDb }, baseId: string, mode: DistributionMode) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return [];
+
+    base.layout.buildings.forEach((building) => {
+      building.distributionMode = mode;
     });
 
     return [persistBasesEffect(draftDb as AppState)];

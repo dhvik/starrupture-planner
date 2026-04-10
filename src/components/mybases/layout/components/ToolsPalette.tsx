@@ -1,7 +1,11 @@
 import { useSubscription, dispatch } from "@flexsurfer/reflex";
 import { SUB_IDS } from "../../../../state/sub-ids";
 import { EVENT_IDS } from "../../../../state/event-ids";
-import type { BaseLayoutPointerMode, RailTier } from "../../../../state/db";
+import type {
+  BaseLayoutPointerMode,
+  DistributionMode,
+  RailTier,
+} from "../../../../state/db";
 
 interface ToolsPaletteProps {
   className?: string;
@@ -73,6 +77,16 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
         EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,
         selectedBaseId,
         "summary",
+      ]);
+    }
+  };
+
+  const handleSetDistributionMode = (mode: DistributionMode) => {
+    if (selectedBaseId) {
+      dispatch([
+        EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_DISTRIBUTION_MODE,
+        selectedBaseId,
+        mode,
       ]);
     }
   };
@@ -220,6 +234,80 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
           >
             <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </button>
+
+        {/* Divider */}
+        <div className="w-px h-8 bg-base-300 self-center" />
+
+        {/* Distribution: First Served */}
+        <button
+          onClick={() => handleSetDistributionMode("first-served")}
+          disabled={!selectedBaseId}
+          className={toolBtnClass(false, !selectedBaseId)}
+          title="Set all buildings to First Served distribution — fills connections in order"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <polyline points="14 3 17 6 14 9" />
+            <line x1="4" y1="12" x2="14" y2="12" />
+            <line x1="4" y1="18" x2="10" y2="18" />
+          </svg>
+        </button>
+
+        {/* Distribution: Shortest Path */}
+        <button
+          onClick={() => handleSetDistributionMode("shortest-path")}
+          disabled={!selectedBaseId}
+          className={toolBtnClass(false, !selectedBaseId)}
+          title="Set all buildings to Shortest Path distribution — closest targets are filled first"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="19" cy="5" r="2" />
+            <circle cx="19" cy="19" r="2" />
+            <line x1="7" y1="11" x2="17" y2="6" />
+            <line x1="7" y1="13" x2="17" y2="18" />
+          </svg>
+        </button>
+
+        {/* Distribution: Equal */}
+        <button
+          onClick={() => handleSetDistributionMode("equal")}
+          disabled={!selectedBaseId}
+          className={toolBtnClass(false, !selectedBaseId)}
+          title="Set all buildings to Equal distribution — output is divided evenly across connections"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="5" y1="9" x2="19" y2="9" />
+            <line x1="5" y1="15" x2="19" y2="15" />
           </svg>
         </button>
       </div>

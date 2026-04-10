@@ -203,7 +203,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       if (!data) return;
 
       try {
-        const { itemId, buildingId, recipeIndex } = JSON.parse(data);
+        const { itemId, buildingId, recipeIndex, paletteMode } =
+          JSON.parse(data);
 
         // Convert screen position to flow position
         const flowPosition = screenToFlowPosition({
@@ -215,16 +216,30 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         const gridX = Math.round(flowPosition.x / GRID_CELL_SIZE);
         const gridY = Math.round(flowPosition.y / GRID_CELL_SIZE);
 
-        // Dispatch add building event
-        dispatch([
-          EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
-          baseId,
-          gridX,
-          gridY,
-          itemId,
-          buildingId,
-          recipeIndex,
-        ]);
+        // Dispatch add building event based on palette mode
+        if (paletteMode === "receiver") {
+          dispatch([
+            EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
+            baseId,
+            gridX,
+            gridY,
+            itemId,
+            "package_receiver",
+            0,
+            "receiver",
+            100,
+          ]);
+        } else {
+          dispatch([
+            EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
+            baseId,
+            gridX,
+            gridY,
+            itemId,
+            buildingId,
+            recipeIndex,
+          ]);
+        }
       } catch (error) {
         console.error("Failed to parse drag data:", error);
       }
@@ -326,7 +341,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
           position="top-right"
           className="bg-base-200 p-2 rounded-lg shadow-lg text-sm"
         >
-          <div className="text-base-content/70" style={{display:"none"}}>
+          <div className="text-base-content/70" style={{ display: "none" }}>
             <div>Zoom: Scroll wheel</div>
             <div>Pan: Click & drag background</div>
             <div>Move: Drag buildings</div>

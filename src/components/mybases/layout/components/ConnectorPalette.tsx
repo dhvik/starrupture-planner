@@ -24,11 +24,6 @@ const ConnectorPalette = ({ className }: ConnectorPaletteProps) => {
   const selectedConnectionId = useSubscription<string | null>([
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_ID,
   ]);
-  const selectedBaseId = useSubscription<string | null>([
-    SUB_IDS.BASES_SELECTED_BASE_ID,
-  ]);
-  const canUndo = useSubscription<boolean>([SUB_IDS.BASES_LAYOUT_CAN_UNDO]);
-  const canRedo = useSubscription<boolean>([SUB_IDS.BASES_LAYOUT_CAN_REDO]);
 
   const handleSelectTool = (tier: RailTier | null) => {
     dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, tier]);
@@ -37,18 +32,6 @@ const ConnectorPalette = ({ className }: ConnectorPaletteProps) => {
   const handleDeleteSelected = () => {
     if (selectedConnectionId) {
       dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION]);
-    }
-  };
-
-  const handleUndo = () => {
-    if (selectedBaseId && canUndo) {
-      dispatch([EVENT_IDS.BASES_LAYOUT_UNDO, selectedBaseId]);
-    }
-  };
-
-  const handleRedo = () => {
-    if (selectedBaseId && canRedo) {
-      dispatch([EVENT_IDS.BASES_LAYOUT_REDO, selectedBaseId]);
     }
   };
 
@@ -122,53 +105,6 @@ const ConnectorPalette = ({ className }: ConnectorPaletteProps) => {
             <path d="M10 11v6" />
             <path d="M14 11v6" />
             <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-          </svg>
-        </button>
-
-        {/* Separator */}
-        <div className="w-px bg-base-300 mx-1 self-stretch" />
-
-        {/* Undo */}
-        <button
-          onClick={handleUndo}
-          disabled={!canUndo}
-          className={toolBtnClass(false, !canUndo)}
-          title="Undo"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="1 4 1 10 7 10" />
-            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-          </svg>
-        </button>
-
-        {/* Redo */}
-        <button
-          onClick={handleRedo}
-          disabled={!canRedo}
-          className={toolBtnClass(false, !canRedo)}
-          title="Redo"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="23 4 23 10 17 10" />
-            <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
           </svg>
         </button>
       </div>

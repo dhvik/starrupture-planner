@@ -65,6 +65,21 @@ export function calculateLayoutBalance(
   const buildingStates = new Map<string, BuildingProductionState>();
 
   for (const layoutBuilding of layout.buildings) {
+    // Handle package receivers separately
+    if (layoutBuilding.buildingType === "receiver") {
+      const outputRate = layoutBuilding.receiverOutputRate || 100;
+      buildingStates.set(layoutBuilding.id, {
+        buildingId: layoutBuilding.id,
+        outputItemId: layoutBuilding.itemId,
+        maxOutputRate: outputRate,
+        actualOutputRate: outputRate, // Always at 100%
+        consumedOutputRate: 0,
+        inputRequirements: [], // No inputs for package receivers
+        productionFactor: 1, // Always at 100%
+      });
+      continue;
+    }
+
     const building = buildingsById[layoutBuilding.buildingId];
     if (!building || !building.recipes || building.recipes.length === 0) {
       continue;

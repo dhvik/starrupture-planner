@@ -41,6 +41,7 @@
 ## Architecture Patterns
 
 ### State Management Architecture (Reflex Framework)
+See [reflex-instructions.md](./reflex-instructions.md) for detailed guidelines on using the Reflex state management framework effectively in this project.
 
 The project uses a **unidirectional data flow** pattern similar to Re-frame/Redux:
 

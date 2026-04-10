@@ -175,6 +175,7 @@ export interface EnergyGroup {
 
 // Base Layout types
 export type RailTier = 1 | 2 | 3;
+export type LayoutBuildingType = "production" | "receiver" | "storage";
 
 export interface BaseLayoutBuilding {
   id: string;
@@ -184,6 +185,8 @@ export interface BaseLayoutBuilding {
   buildingId: string; // References Building.id
   recipeIndex: number; // Index of recipe in building.recipes array
   count: number; // Number of building instances (1-8), acts as multiplier
+  buildingType?: LayoutBuildingType; // Type of layout building (production, receiver, storage). Defaults to "production" if not set
+  receiverOutputRate?: number; // Output rate for package receivers (default: 100 units/min)
 }
 
 export interface BaseLayoutConnection {
@@ -277,10 +280,7 @@ export interface AppState {
   basesSelectedBaseId: string | null;
   baseLayoutConnectorMode: RailTier | null; // Active connector mode for creating connections
   baseLayoutSelectedConnectionId: string | null; // Currently selected connection in layout
-  baseLayoutHistory: Record<
-    string,
-    { undoStack: BaseLayout[]; redoStack: BaseLayout[] }
-  >; // Undo/redo history per base
+  baseLayoutItemPaletteMode: "production" | "receiver"; // Item palette mode: production buildings or package receivers
   uiConfirmationDialog: ConfirmationDialog;
   productionPlanModalState: CreateProductionPlanModalState;
 }
@@ -319,7 +319,7 @@ const appState: AppState = {
   basesSelectedBaseId: null,
   baseLayoutConnectorMode: null,
   baseLayoutSelectedConnectionId: null,
-  baseLayoutHistory: {},
+  baseLayoutItemPaletteMode: "production",
   uiConfirmationDialog: {
     isOpen: false,
     title: "",

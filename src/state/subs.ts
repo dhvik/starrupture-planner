@@ -99,6 +99,7 @@ regSub(
   SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_ID,
   "baseLayoutSelectedConnectionId",
 );
+regSub(SUB_IDS.BASES_LAYOUT_ITEM_PALETTE_MODE, "baseLayoutItemPaletteMode");
 regSub(SUB_IDS.UI_CONFIRMATION_DIALOG, "uiConfirmationDialog");
 regSub(SUB_IDS.PRODUCTION_PLAN_MODAL_STATE, "productionPlanModalState");
 regSub(SUB_IDS.ENERGY_GROUPS_LIST, "energyGroups");
@@ -1362,40 +1363,6 @@ regSub(
 //============================================================
 // Base Layout subscriptions
 //============================================================
-
-// Root sub for layout history
-const BASE_LAYOUT_HISTORY_ROOT = "baseLayoutHistory__root";
-regSub(BASE_LAYOUT_HISTORY_ROOT, "baseLayoutHistory");
-
-regSub(
-  SUB_IDS.BASES_LAYOUT_CAN_UNDO,
-  (
-    selectedBaseId: string | null,
-    history: Record<
-      string,
-      { undoStack: BaseLayout[]; redoStack: BaseLayout[] }
-    >,
-  ): boolean => {
-    if (!selectedBaseId) return false;
-    return (history[selectedBaseId]?.undoStack.length ?? 0) > 0;
-  },
-  () => [[SUB_IDS.BASES_SELECTED_BASE_ID], [BASE_LAYOUT_HISTORY_ROOT]],
-);
-
-regSub(
-  SUB_IDS.BASES_LAYOUT_CAN_REDO,
-  (
-    selectedBaseId: string | null,
-    history: Record<
-      string,
-      { undoStack: BaseLayout[]; redoStack: BaseLayout[] }
-    >,
-  ): boolean => {
-    if (!selectedBaseId) return false;
-    return (history[selectedBaseId]?.redoStack.length ?? 0) > 0;
-  },
-  () => [[SUB_IDS.BASES_SELECTED_BASE_ID], [BASE_LAYOUT_HISTORY_ROOT]],
-);
 
 regSub(
   SUB_IDS.BASES_LAYOUT_BY_BASE_ID,

@@ -1,0 +1,272 @@
+## 0) Reflex Quick Info
+
+- Reflex is a React state-management library inspired by ClojureScript re-frame (event-driven updates, subscriptions for derived data, effects/coeffects for side effects).
+- Install:
+  - Runtime: `npm i @flexsurfer/reflex`
+  - Devtools (dev only): `npm i -D @flexsurfer/reflex-devtools`
+- Docs:
+  - Main docs: [reflex.js.org/docs](https://reflex.js.org/docs)
+  - Best practices: [reflex.js.org/docs/best-practices.html](https://reflex.js.org/docs/best-practices.html)
+  - Packages: [@flexsurfer/reflex](https://www.npmjs.com/package/@flexsurfer/reflex), [@flexsurfer/reflex-devtools](https://www.npmjs.com/package/@flexsurfer/reflex-devtools)
+
+## 1) State Architecture
+
+Use this baseline structure:
+
+```text
+src/state/
+  db.ts
+  event-ids.ts
+  events.ts
+  effect-ids.ts
+  effects.ts
+  sub-ids.ts
+  subs.ts
+```
+
+Rules:
+- Keep IDs centralized in `event-ids.ts`, `effect-ids.ts`, `sub-ids.ts`.
+- Keep init in `db.ts` (`initAppDb(...)`).
+- Register events/effects/subscriptions via side-effect imports in app bootstrap (`main.tsx` style).
+- If `events.ts` or `subs.ts` grows too large, split by feature, keep shared/global state separate.
+
+## 2) State Shape
+
+- Grow horizontally (new top-level feature keys), avoid deep nesting.
+- Keep UI state explicit and separate from domain entities. Use a plain prefix on field names to group by domain (e.g. `uiSidebarOpen`, `uiSelectedTab`, `uiModalVisible` for UI state; `todosMap`, `todosFilter` for domain state). Avoid separators like `/` or `.` in field names — flat `camelCase` with a domain prefix keeps keys simple, grep-friendly, and avoids issues with object path accessors.
+- If using `Map`/`Set` in DB, call `enableMapSet()` before `initAppDb`.
+
+## 3) Events `regEvent`
+
+- Events must be synchronous and focused on state transitions.
+- Events should read all required data from `draftDb` (or via coeffects) — never rely on callers passing subscription-derived state; dispatch calls from views should only carry user intent (IDs, input values, flags).
+- Validate inputs and guard clauses first; return early on invalid state.
+- Mutate only required fields on `draftDb`.
+- Avoid unnecessary object/array recreation (`{...obj}`, `[...arr]`) when no actual change is needed.
+- Never perform async/API/localStorage work directly in events.
+- Return effect tuples for side effects.
+- When sending mutated draft data to effects, always use `current(...)`.
+- Prefer deterministic coeffects (time/id/random/env) instead of direct globals for testability.
+
+Event naming:
+- Keep exported constant keys in `UPPER_SNAKE_CASE`.
+- Use namespaced string values: `feature/action` (example: `bases/create`).
+- Keep key and value aligned:
+  - `BASES_CREATE` -> `bases/create`
+  - `PRODUCTION_PLAN_ADD_BUILDINGS_TO_BASE` -> `production_plan/add_buildings_to_base`
+
+## 4) Effects and Coeffects
+
+- Put all I/O here: localStorage, HTTP, timers, analytics, navigation.
+- Effects should be small, defensive, and fail-soft (log, do not crash app state flow).
+
+## 5) Subscriptions `regSub`
+
+- Define root subscriptions first `regSub(id, "pathKey")`.
+- Build derived subscriptions from other subscriptions only.
+- Use parameterized subscriptions for by-id and section-specific queries.
+- Keep subscriptions deterministic and lightweight.
+- Subscriptions must return data shaped and ready for direct view consumption — all filtering, sorting, formatting, and joining should happen in the subscription layer, not in React components.
+- Move heavy computations to events (precompute once, read many); avoid repeated expensive derivations in hot subscriptions.
+
+## 6) React Component Contract
+
+- Components should only:
+  - subscribe to minimal required data
+  - dispatch events on user intent (pass only user-provided values — e.g. input text, selected id — never forward subscription data back through dispatch; the event handler should read everything it needs from the DB itself)
+  - render UI
+- Always pass the component name as the second argument to `useSubscription` for devtools tracing:
+  `const todos = useSubscription<Todo[]>([SUB_IDS.TODOS], 'TodoList');`
+- Never transform, filter, sort, or reshape subscription data inside a component — if the view needs a different shape, create a dedicated subscription that returns it ready to render.
+- Use direct React hooks only for local/ephemeral component concerns:
+  - temporary form/input draft state before dispatch
+  - UI-only toggles scoped to one component (hover/open/focus)
+  - refs, DOM measurement, animation lifecycle
+- Do not mirror Reflex global state in `useState`/`useReducer`.
+- If state is shared, persisted, or business-relevant, keep it in Reflex DB via events/subscriptions.
+- Keep `useEffect` thin in components; business side effects belong in Reflex effects/coeffects.
+- Do not place business rules/validation pipelines in component handlers.
+- Avoid over-subscription (row/item components should not subscribe to full collections).
+
+## 7) Devtools Setup
+
+Install devtools as a dev dependency:
+
+```bash
+npm i -D @flexsurfer/reflex-devtools
+```
+
+Enable in your app entry point (`main.tsx`) before dispatching any events:
+
+```ts
+import { enableTracing } from '@flexsurfer/reflex';
+import { enableDevtools } from '@flexsurfer/reflex-devtools';
+
+enableTracing();   // required — turns on the trace pipeline that devtools reads
+enableDevtools();  // opens the devtools connection
+
+```
+
+this code should be run only in dev env.
+
+## 8) Test Minimum
+
+For every new feature:
+- Event tests: mutation correctness + emitted effect tuples.
+- Subscription tests: derived outputs from fixed state fixtures.
+
+Events and subscriptions are pure functions — test them by extracting the handler with `getHandler` and calling it directly with mock inputs.
+
+### Testing Events
+
+Use `getHandler('event', EVENT_ID)` to get the raw handler. Build a mock `coeffects` object with `draftDb` (and any injected coeffects), call the handler, then assert mutations on `draftDb` and the returned effect tuples.
+
+```ts
+import { getHandler } from '@flexsurfer/reflex';
+import type { EventHandler, CoEffects } from '@flexsurfer/reflex';
+import './events'; // side-effect import registers handlers
+
+it('ADD_TODO should add a todo and persist', () => {
+  const handler = getHandler('event', EVENT_IDS.ADD_TODO) as EventHandler;
+
+  const mockDB = { todos: [], showing: 'all' };
+  const coeffects = {
+    event: [EVENT_IDS.ADD_TODO, 'Buy milk'],
+    draftDb: mockDB,
+    now: 12345,
+  } as CoEffects;
+
+  const effects = handler(coeffects, 'Buy milk');
+
+  // Assert state mutation
+  expect(mockDB.todos).toHaveLength(1);
+  expect(mockDB.todos[0]).toEqual({ id: 12345, title: 'Buy milk', done: false });
+
+  // Assert emitted effects
+  expect(effects).toEqual([[EFFECT_IDS.SET_TODOS, mockDB.todos]]);
+});
+
+it('ADD_TODO should ignore empty input', () => {
+  const handler = getHandler('event', EVENT_IDS.ADD_TODO) as EventHandler;
+
+  const mockDB = { todos: [], showing: 'all' };
+  const coeffects = { event: [EVENT_IDS.ADD_TODO, '  '], draftDb: mockDB, now: 1 } as CoEffects;
+
+  const effects = handler(coeffects, '  ');
+
+  expect(mockDB.todos).toHaveLength(0);
+  expect(effects).toBeUndefined();
+});
+```
+
+### Testing Subscriptions
+Computed subscriptions: call `handler(inputFromParentSub1, inputFromParentSub2, ...)` directly — the handler receives its parent subscription values as positional arguments.
+
+```ts
+import { getHandler, initAppDb } from '@flexsurfer/reflex';
+import type { SubHandler, SubDepsHandler } from '@flexsurfer/reflex';
+import './subs';
+
+it('OPEN_COUNT computed sub counts active todos', () => {
+  const handler = getHandler('sub', SUB_IDS.TODOS_OPEN_COUNT) as SubHandler;
+  const todos = [
+    { id: 1, title: 'A', done: false },
+    { id: 2, title: 'B', done: true },
+    { id: 3, title: 'C', done: false },
+  ];
+
+  expect(handler(todos)).toBe(2);
+});
+```
+
+## 9) AI Generation Checklist
+
+Before finalizing generated code:
+- IDs added/updated in all relevant `*-ids.ts` files.
+- Event namespaced and descriptive.
+- Side effects isolated to effects/coeffects.
+- `current(...)` used when passing draft-derived data to effects.
+- No unnecessary object/array recreation in events.
+- Expensive work not placed in frequently re-run subscriptions.
+- Subscriptions return view-ready data; components do not reshape subscription output.
+- Dispatch calls from components pass only user intent, not subscription data; events read from DB.
+- Tests added for new event/subscription behavior.
+
+## 10) Starter Skeleton (copy pattern)
+
+```ts
+import {
+  initAppDb,
+  regSub,
+  regEvent,
+  regEffect,
+  regCoeffect,
+  current,
+  dispatch,
+  useSubscription,
+} from '@flexsurfer/reflex';
+
+// event-ids.ts
+export const EVENT_IDS = {
+  APP_INIT: 'app/init',
+  TODOS_ADD: 'todos/add',
+} as const;
+
+// effect-ids.ts
+export const EFFECT_IDS = {
+  GET_TODOS: 'storage/get_todos',
+  SET_TODOS: 'storage/set_todos',
+} as const;
+
+// sub-ids.ts
+export const SUB_IDS = {
+  TODOS_LIST: 'todos/list',       // root sub
+  TODOS_OPEN_COUNT: 'todos/open_count', // computed sub
+} as const;
+
+// db.ts
+type Todo = { id: string; text: string; done: boolean };
+initAppDb({ todos: [] as Todo[] });
+
+// effects.ts
+regEffect(EFFECT_IDS.SET_TODOS, (todos: Todo[]) => {
+  localStorage.setItem('todos', JSON.stringify(todos));
+});
+
+regCoeffect(EFFECT_IDS.GET_TODOS, (coeffects) => {
+  const raw = localStorage.getItem('todos');
+  coeffects.localStoreTodos = raw ? (JSON.parse(raw) as Todo[]) : [];
+  return coeffects;
+});
+
+// events.ts
+regEvent(
+  EVENT_IDS.APP_INIT,
+  ({ draftDb, localStoreTodos }) => {
+    draftDb.todos = Array.isArray(localStoreTodos) ? localStoreTodos : [];
+  },
+  [[EFFECT_IDS.GET_TODOS]]
+);
+
+regEvent(EVENT_IDS.TODOS_ADD, ({ draftDb }, text: string) => {
+  const clean = text.trim();
+  if (!clean) return;
+  draftDb.todos.push({ id: `todo_${Date.now()}`, text: clean, done: false });
+  return [[EFFECT_IDS.SET_TODOS, current(draftDb.todos)]];
+});
+
+// subs.ts
+regSub(SUB_IDS.TODOS_LIST, 'todos'); // root sub
+
+regSub(
+  SUB_IDS.TODOS_OPEN_COUNT,          // computed sub from root sub
+  (todos: Todo[]) => todos.filter((t) => !t.done).length,
+  () => [[SUB_IDS.TODOS_LIST]]
+);
+
+// Usage example (React):
+// const todos = useSubscription([SUB_IDS.TODOS_LIST], 'TodoList');
+// const openCount = useSubscription([SUB_IDS.TODOS_OPEN_COUNT], 'TodoFooter');
+// dispatch([EVENT_IDS.APP_INIT]);
+// dispatch([EVENT_IDS.TODOS_ADD, 'Buy milk']);
+```

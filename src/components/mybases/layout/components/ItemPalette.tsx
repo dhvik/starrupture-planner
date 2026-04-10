@@ -1,33 +1,52 @@
-import { useState, useMemo } from 'react';
-import { useSubscription, dispatch } from '@flexsurfer/reflex';
-import { SUB_IDS } from '../../../../state/sub-ids';
-import { EVENT_IDS } from '../../../../state/event-ids';
-import type { Item, Building, BaseLayoutBuilding } from '../../../../state/db';
-import { ItemImage } from '../../../ui';
+import { useState, useMemo } from "react";
+import { useSubscription, dispatch } from "@flexsurfer/reflex";
+import { SUB_IDS } from "../../../../state/sub-ids";
+import { EVENT_IDS } from "../../../../state/event-ids";
+import type { Item, Building, BaseLayoutBuilding } from "../../../../state/db";
+import { ItemImage } from "../../../ui";
 
 interface ItemPaletteProps {
   baseId: string;
   className?: string;
-  onDragStart?: (itemId: string, buildingId: string, recipeIndex: number) => void;
+  onDragStart?: (
+    itemId: string,
+    buildingId: string,
+    recipeIndex: number,
+  ) => void;
   getViewportCenter?: () => { x: number; y: number };
 }
 
-const ItemPalette = ({ baseId, className, onDragStart, getViewportCenter }: ItemPaletteProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  
+const ItemPalette = ({
+  baseId,
+  className,
+  onDragStart,
+  getViewportCenter,
+}: ItemPaletteProps) => {
+  const [searchTerm, setSearchTerm] = useState("");
+
   const items = useSubscription<Item[]>([SUB_IDS.ITEMS_LIST]);
   const buildings = useSubscription<Building[]>([SUB_IDS.BUILDINGS_LIST]);
-  const layoutBuildings = useSubscription<BaseLayoutBuilding[]>([SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID, baseId]);
+  const layoutBuildings = useSubscription<BaseLayoutBuilding[]>([
+    SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID,
+    baseId,
+  ]);
+  const paletteMode = useSubscription<"production" | "receiver">([
+    SUB_IDS.BASES_LAYOUT_ITEM_PALETTE_MODE,
+  ]);
 
   // Find all items that can be produced (have a recipe)
   const producibleItems = useMemo(() => {
-    const itemsWithRecipes: Array<{ item: Item; building: Building; recipeIndex: number }> = [];
+    const itemsWithRecipes: Array<{
+      item: Item;
+      building: Building;
+      recipeIndex: number;
+    }> = [];
 
     for (const building of buildings) {
       if (!building.recipes || building.recipes.length === 0) continue;
 
       building.recipes.forEach((recipe, index) => {
-        const item = items.find(i => i.id === recipe.output.id);
+        const item = items.find((i) => i.id === recipe.output.id);
         if (item) {
           itemsWithRecipes.push({ item, building, recipeIndex: index });
         }
@@ -42,35 +61,59 @@ const ItemPalette = ({ baseId, className, onDragStart, getViewportCenter }: Item
     if (!searchTerm.trim()) return producibleItems;
 
     const lowerSearch = searchTerm.toLowerCase();
-    return producibleItems.filter(({ item, building }) =>
-      item.name.toLowerCase().includes(lowerSearch) ||
-      building.name.toLowerCase().includes(lowerSearch)
+    return producibleItems.filter(
+      ({ item, building }) =>
+        item.name.toLowerCase().includes(lowerSearch) ||
+        building.name.toLowerCase().includes(lowerSearch),
     );
   }, [producibleItems, searchTerm]);
 
-  const handleAddItem = (itemId: string, buildingId: string, recipeIndex: number) => {
+  const handleAddItem = (
+    itemId: string,
+    buildingId: string,
+    recipeIndex: number,
+  ) => {
     // Get the center of the current viewport, or default to (0, 0)
-    const centerPoint = getViewportCenter ? getViewportCenter() : { x: 0, y: 0 };
-    
+    const centerPoint = getViewportCenter
+      ? getViewportCenter()
+      : { x: 0, y: 0 };
+
     // Check if center position is occupied
     const isOccupied = layoutBuildings.some(
-      building => building.x === centerPoint.x && building.y === centerPoint.y
+      (building) =>
+        building.x === centerPoint.x && building.y === centerPoint.y,
     );
-    
+
     // If occupied, offset by +1 x and +1 y
-    const position = isOccupied 
+    const position = isOccupied
       ? { x: centerPoint.x + 1, y: centerPoint.y + 1 }
       : centerPoint;
 
-    dispatch([
-      EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
-      baseId,
-      position.x,
-      position.y,
-      itemId,
-      buildingId,
-      recipeIndex,
-    ]);
+    if (paletteMode === "receiver") {
+      // Add package receiver instead of production building
+      dispatch([
+        EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
+        baseId,
+        position.x,
+        position.y,
+        itemId,
+        "package_receiver", // Use a special building ID for receivers
+        0, // recipeIndex not used for receivers
+        "receiver", // buildingType
+        100, // Default output rate
+      ]);
+    } else {
+      // Normal production building
+      dispatch([
+        EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
+        baseId,
+        position.x,
+        position.y,
+        itemId,
+        buildingId,
+        recipeIndex,
+      ]);
+    }
   };
 
   return (
@@ -78,6 +121,41 @@ const ItemPalette = ({ baseId, className, onDragStart, getViewportCenter }: Item
       {/* Header */}
       <div className="p-4 border-b border-base-300 flex-shrink-0">
         <h3 className="font-bold mb-2">Item Palette</h3>
+
+        {/* Mode selector */}
+        <div className="flex gap-2 mb-3">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              name="palette-mode"
+              className="radio radio-sm radio-primary"
+              checked={paletteMode === "production"}
+              onChange={() =>
+                dispatch([
+                  EVENT_IDS.BASES_LAYOUT_SET_ITEM_PALETTE_MODE,
+                  "production",
+                ])
+              }
+            />
+            <span className="text-sm">Production</span>
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              name="palette-mode"
+              className="radio radio-sm radio-primary"
+              checked={paletteMode === "receiver"}
+              onChange={() =>
+                dispatch([
+                  EVENT_IDS.BASES_LAYOUT_SET_ITEM_PALETTE_MODE,
+                  "receiver",
+                ])
+              }
+            />
+            <span className="text-sm">Receiver</span>
+          </label>
+        </div>
+
         <input
           type="text"
           placeholder="Search items..."
@@ -103,20 +181,28 @@ const ItemPalette = ({ baseId, className, onDragStart, getViewportCenter }: Item
                   if (onDragStart) {
                     onDragStart(item.id, building.id, recipeIndex);
                   }
-                  e.dataTransfer.setData('application/reactflow', JSON.stringify({
-                    itemId: item.id,
-                    buildingId: building.id,
-                    recipeIndex,
-                  }));
-                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData(
+                    "application/reactflow",
+                    JSON.stringify({
+                      itemId: item.id,
+                      buildingId: building.id,
+                      recipeIndex,
+                      paletteMode, // Include the current palette mode
+                    }),
+                  );
+                  e.dataTransfer.effectAllowed = "move";
                 }}
                 onClick={() => handleAddItem(item.id, building.id, recipeIndex)}
                 className="w-full btn btn-sm justify-start gap-2 normal-case cursor-move"
               >
                 <ItemImage itemId={item.id} size="small" />
                 <div className="flex-1 text-left truncate">
-                  <div className="text-xs font-semibold truncate">{item.name}</div>
-                  <div className="text-xs text-base-content/50 truncate">{building.name}</div>
+                  <div className="text-xs font-semibold truncate">
+                    {item.name}
+                  </div>
+                  <div className="text-xs text-base-content/50 truncate">
+                    {building.name}
+                  </div>
                 </div>
               </button>
             ))}

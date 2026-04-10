@@ -111,20 +111,24 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const selectedConnectionIds = useSubscription<string[]>([
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_IDS,
   ]);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
   const hasInitializedView = useRef(false);
   const suppressNextNodeClick = useRef(false);
   const suppressNextPaneClick = useRef(false);
   const didCompleteConnection = useRef(false);
   const connectionDragRef = useRef<ConnectionDragState | null>(null);
+  const ctrlPanActiveRef = useRef(false);
+  const ctrlPanLastPosRef = useRef({ x: 0, y: 0 });
   const [connectionDrag, setConnectionDrag] = useState<ConnectionDragState | null>(
     null,
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [isCtrlHeld, setIsCtrlHeld] = useState(false);
   const isPanMode = pointerMode === "pan" && !connectorMode;
   const isSelectMode = pointerMode === "select" && !connectorMode;
+  const ctrlPan = isSelectMode && isCtrlHeld;
   const allowsSingleSelection = !connectorMode;
 
   const setActiveConnectionDrag = useCallback(
@@ -694,6 +698,63 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     [allowsSingleSelection, selectedConnectionIds],
   );
 
+  // Ctrl+drag panning — bypass ReactFlow's gesture system (which reads panOnDrag
+  // only at pointerdown and can't be rewired dynamically) and drive panBy() directly.
+  const handleCtrlPanPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!ctrlPan) return;
+      const target = e.target as Element;
+      // Let clicks on nodes, edges and UI panels fall through normally.
+      if (
+        target.closest(".react-flow__node") ||
+        target.closest(".react-flow__edge") ||
+        target.closest(".react-flow__controls") ||
+        target.closest(".react-flow__panel")
+      ) return;
+      ctrlPanActiveRef.current = true;
+      ctrlPanLastPosRef.current = { x: e.clientX, y: e.clientY };
+      // Pointer capture keeps the pan going even if the cursor leaves the div.
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [ctrlPan],
+  );
+
+  const handleCtrlPanPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!ctrlPanActiveRef.current) return;
+      const dx = e.clientX - ctrlPanLastPosRef.current.x;
+      const dy = e.clientY - ctrlPanLastPosRef.current.y;
+      const { x, y, zoom } = getViewport();
+      setViewport({ x: x + dx, y: y + dy, zoom });
+      ctrlPanLastPosRef.current = { x: e.clientX, y: e.clientY };
+    },
+    [getViewport, setViewport],
+  );
+
+  const handleCtrlPanPointerUp = useCallback(() => {
+    ctrlPanActiveRef.current = false;
+  }, []);
+
+  // Track Ctrl/Cmd key for temporary pan-in-select-mode behaviour.
+  // Reset on window blur so the flag never gets stuck when the user Alt+Tabs.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Control" || e.key === "Meta") setIsCtrlHeld(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Control" || e.key === "Meta") setIsCtrlHeld(false);
+    };
+    const onBlur = () => setIsCtrlHeld(false);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
   // Handle keyboard events - Delete key removes the selected building or connection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -715,7 +776,14 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   }, [selectedBuildingIds.length, selectedConnectionIds.length]);
 
   return (
-    <div className={className}>
+    <div
+      className={className}
+      style={ctrlPan ? { cursor: "grab" } : undefined}
+      onPointerDown={handleCtrlPanPointerDown}
+      onPointerMove={handleCtrlPanPointerMove}
+      onPointerUp={handleCtrlPanPointerUp}
+      onPointerCancel={handleCtrlPanPointerUp}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -744,7 +812,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         autoPanOnNodeDrag={false}
         panOnDrag={isPanMode}
-        selectionOnDrag={isSelectMode}
+        selectionOnDrag={isSelectMode && !isCtrlHeld}
+        multiSelectionKeyCode={null}
         selectNodesOnDrag={false}
         selectionMode={SelectionMode.Full}
         connectionMode={ConnectionMode.Strict}

@@ -325,6 +325,10 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   };
 
   const buildingCount = building.count || 1;
+  const buildingTitle =
+    isSummaryMode && buildingCount > 1
+      ? `${buildingDef.name} (x${buildingCount})`
+      : buildingDef.name;
 
   return (
     <>
@@ -381,7 +385,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               onDoubleClick={handleToggleMode}
               title="Double-click to toggle view mode"
             >
-              {buildingDef.name}
+              {buildingTitle}
             </div>
           </div>
           {!isSummaryMode && (

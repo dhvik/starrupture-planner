@@ -125,6 +125,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const isPanMode = pointerMode === "pan" && !connectorMode;
   const isSelectMode = pointerMode === "select" && !connectorMode;
+  const allowsSingleSelection = !connectorMode;
 
   const setActiveConnectionDrag = useCallback(
     (nextDrag: ConnectionDragState | null) => {
@@ -533,7 +534,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       }
 
       if (!connectorMode) {
-        if (pointerMode !== "select") {
+        if (!allowsSingleSelection) {
           return;
         }
         dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING, node.id]);
@@ -562,10 +563,10 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       }
     },
     [
+      allowsSingleSelection,
       connectorMode,
       connectionDrag,
       handleConnect,
-      pointerMode,
       setActiveConnectionDrag,
       startConnectionDrag,
     ],
@@ -624,14 +625,14 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   // Handle edge click - select connection
   const handleEdgeClick = useCallback(
     (event: React.MouseEvent, edge: Edge) => {
-      if (pointerMode !== "select") {
+      if (!allowsSingleSelection) {
         return;
       }
       event.stopPropagation();
       suppressNextPaneClick.current = true;
       dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, edge.id]);
     },
-    [pointerMode],
+    [allowsSingleSelection],
   );
 
   // Handle keyboard events - Delete key removes the selected building or connection
@@ -677,7 +678,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         edgeTypes={edgeTypes as any}
         colorMode={theme}
-        elementsSelectable={isSelectMode}
+        elementsSelectable={allowsSingleSelection}
         connectionLineType={ConnectionLineType.Bezier}
         minZoom={0.1}
         maxZoom={2}

@@ -19,11 +19,13 @@ interface LayoutBuildingNodeData {
   baseId: string;
   connectorMode?: RailTier | null;
   isConnectionSource?: boolean;
+  selected?: boolean;
 }
 
 const LayoutBuildingNode = memo((props: NodeProps) => {
   const data = props.data as unknown as LayoutBuildingNodeData;
-  const { building, baseId, connectorMode, isConnectionSource } = data;
+  const { building, baseId, connectorMode, isConnectionSource, selected } =
+    data;
 
   const buildingsById = useSubscription<Record<string, Building>>([
     SUB_IDS.BUILDINGS_BY_ID_MAP,
@@ -35,7 +37,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     Record<string, BuildingProductionState>
   >([SUB_IDS.BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID, baseId]);
 
-  // Handler to toggle building mode
   const handleToggleMode = (e: React.MouseEvent) => {
     e.stopPropagation();
     dispatch([
@@ -45,7 +46,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     ]);
   };
 
-  // Determine current mode (defaults to "edit")
   const currentMode = building.mode || "edit";
   const isSummaryMode = currentMode === "summary";
 
@@ -117,7 +117,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     };
   };
 
-  // Handle package receivers
   if (building.buildingType === "receiver") {
     const item = itemsById[building.itemId];
     const productionState = buildingStates?.[building.id];
@@ -138,11 +137,12 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
     const borderClass = isConnectionSource
       ? "border-primary !border-4 shadow-2xl"
-      : connectorMode
-        ? "border-primary border-dashed"
-        : receiverVisualClasses.borderClass;
+      : selected
+        ? "border-info !border-4 shadow-2xl"
+        : connectorMode
+          ? "border-primary border-dashed"
+          : receiverVisualClasses.borderClass;
 
-    // Glassy effect for summary mode
     const containerClass = isSummaryMode
       ? `backdrop-blur-md ${receiverVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`
       : `${receiverVisualClasses.backgroundClass} rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all`;
@@ -176,7 +176,9 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             connectorMode
               ? "cursor-pointer hover:ring-4 hover:ring-primary/50 hover:shadow-2xl"
               : ""
-          } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""}`}
+          } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
+            selected ? "ring-4 ring-info/40" : ""
+          }`}
           style={{ pointerEvents: "all" }}
         >
           {isConnectionSource && (
@@ -185,7 +187,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             </div>
           )}
 
-          {/* Header */}
           <div className="flex items-center justify-between mb-2 gap-1">
             <div
               className="font-bold text-sm cursor-pointer hover:text-primary"
@@ -205,12 +206,10 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             )}
           </div>
 
-          {/* Receiver icon */}
           <div className="flex justify-center mb-2">
             <BuildingImage buildingId="package_receiver" size="large" />
           </div>
 
-          {/* Item output */}
           <div className="rounded p-2 bg-base-300">
             <div className="flex items-center gap-2">
               <ItemImage itemId={item.id} size="small" />
@@ -240,7 +239,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="mt-2 flex gap-2 text-xs text-base-content/70">
             <div>⚡ 40</div>
             <div>🔥 40</div>
@@ -250,7 +248,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     );
   }
 
-  // Regular production building rendering
   const buildingDef = buildingsById[building.buildingId];
   const item = itemsById[building.itemId];
   const recipe = buildingDef?.recipes?.[building.recipeIndex];
@@ -264,14 +261,12 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     );
   }
 
-  // Calculate resource tags for this building (with production state for scaling)
   const resourceTags = calculateBuildingResourceTags(
     building,
     buildingDef,
     productionState,
   );
 
-  // Determine border color based on resource status
   const hasUnmetInputs = resourceTags.some(
     (tag) => tag.type === "input" && !tag.satisfied,
   );
@@ -283,14 +278,14 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
   let borderClass = buildingVisualClasses.borderClass;
 
-  // Override border if in connector mode
   if (isConnectionSource) {
     borderClass = "border-primary !border-4 shadow-2xl";
+  } else if (selected) {
+    borderClass = "border-info !border-4 shadow-2xl";
   } else if (connectorMode) {
     borderClass = "border-primary border-dashed";
   }
 
-  // Glassy effect for summary mode
   const containerClass = isSummaryMode
     ? `backdrop-blur-md ${buildingVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`
     : `${buildingVisualClasses.backgroundClass} rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all`;
@@ -310,7 +305,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     ]);
   };
 
-  const buildingCount = building.count || 1; // Default to 1 for backwards compatibility
+  const buildingCount = building.count || 1;
 
   return (
     <>
@@ -320,16 +315,17 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           connectorMode
             ? "cursor-pointer hover:ring-4 hover:ring-primary/50 hover:shadow-2xl"
             : ""
-        } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""}`}
+        } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
+          selected ? "ring-4 ring-info/40" : ""
+        }`}
         style={{ pointerEvents: "all" }}
       >
-        {/* Connector mode indicator */}
         {isConnectionSource && (
           <div className="absolute -top-2 -right-2 bg-primary text-primary-content text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
             SOURCE
           </div>
         )}
-        {/* Header */}
+
         <div className="flex items-center justify-between mb-2 gap-1">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
             {!isSummaryMode && (
@@ -374,12 +370,10 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           )}
         </div>
 
-        {/* Building icon */}
         <div className="flex justify-center mb-2">
           <BuildingImage buildingId={buildingDef.id} size="medium" />
         </div>
 
-        {/* Item output */}
         <div className="rounded p-2 bg-base-300">
           <div className="flex items-center gap-2">
             <ItemImage itemId={item.id} size="small" />
@@ -393,7 +387,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               </div>
             </div>
           </div>
-          {/* Production progress bar (hidden in summary mode) */}
           {!isSummaryMode && productionState && (
             <div className="mt-2">
               <div className="flex justify-between text-xs mb-1">
@@ -431,27 +424,17 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           )}
         </div>
 
-        {/* Resource tags (inputs only) */}
         {resourceTags.length > 0 && (
           <div className="mt-2 space-y-1">
             {resourceTags.map((tag) => {
               const tagItem = itemsById[tag.itemId];
               if (!tagItem) return null;
 
-              const isOutput = tag.type === "output";
-
-              // Skip output tags - they're shown in the main output section
-              if (isOutput) return null;
-
-              // In summary mode, only show deficit inputs (fulfillment < 99%)
+              if (tag.type === "output") return null;
               if (isSummaryMode && tag.fulfillmentRatio >= 0.99) {
                 return null;
               }
 
-              // Color scheme for inputs:
-              // - Input (fully satisfied): neutral
-              // - Input (partial): yellow/warning
-              // - Input (none): red/error
               let bgClass = "bg-base-300";
               let textClass = "";
 
@@ -485,7 +468,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           </div>
         )}
 
-        {/* Stats */}
         <div className="mt-2 flex gap-2 text-xs text-base-content/70">
           {buildingDef.power && <div>⚡ {buildingDef.power}</div>}
           {buildingDef.heat && <div>🔥 {buildingDef.heat}</div>}

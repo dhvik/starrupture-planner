@@ -714,6 +714,13 @@ regEvent(
     const base = getBaseById(draftDb.basesList, baseId);
     if (!base || !base.layout) return [];
 
+    const removedSelectedConnection = base.layout.connections.some(
+      (connection) =>
+        connection.id === draftDb.baseLayoutSelectedConnectionId &&
+        (connection.fromBuildingId === layoutBuildingId ||
+          connection.toBuildingId === layoutBuildingId),
+    );
+
     // Remove the building
     base.layout.buildings = base.layout.buildings.filter(
       (b) => b.id !== layoutBuildingId,
@@ -725,6 +732,14 @@ regEvent(
         c.fromBuildingId !== layoutBuildingId &&
         c.toBuildingId !== layoutBuildingId,
     );
+
+    if (draftDb.baseLayoutSelectedBuildingId === layoutBuildingId) {
+      draftDb.baseLayoutSelectedBuildingId = null;
+    }
+
+    if (removedSelectedConnection) {
+      draftDb.baseLayoutSelectedConnectionId = null;
+    }
 
     return [persistBasesEffect(draftDb as AppState)];
   },
@@ -939,9 +954,58 @@ regEvent(
 
 /** Set selected connection in layout */
 regEvent(
+  EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING,
+  ({ draftDb }, buildingId: string | null) => {
+    draftDb.baseLayoutSelectedBuildingId = buildingId;
+    if (buildingId) {
+      draftDb.baseLayoutSelectedConnectionId = null;
+    }
+  },
+);
+
+/** Delete the currently selected building */
+regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING, ({ draftDb }) => {
+  const buildingId = draftDb.baseLayoutSelectedBuildingId;
+  if (!buildingId) return;
+
+  const selectedBaseId = draftDb.basesSelectedBaseId;
+  if (!selectedBaseId) return;
+
+  const base = getBaseById(draftDb.basesList, selectedBaseId);
+  if (!base || !base.layout) return;
+
+  const removedSelectedConnection = base.layout.connections.some(
+    (connection) =>
+      connection.id === draftDb.baseLayoutSelectedConnectionId &&
+      (connection.fromBuildingId === buildingId ||
+        connection.toBuildingId === buildingId),
+  );
+
+  base.layout.buildings = base.layout.buildings.filter(
+    (building) => building.id !== buildingId,
+  );
+  base.layout.connections = base.layout.connections.filter(
+    (connection) =>
+      connection.fromBuildingId !== buildingId &&
+      connection.toBuildingId !== buildingId,
+  );
+
+  draftDb.baseLayoutSelectedBuildingId = null;
+  if (removedSelectedConnection) {
+    draftDb.baseLayoutSelectedConnectionId = null;
+  }
+
+  return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Set selected connection in layout */
+regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION,
   ({ draftDb }, connectionId: string | null) => {
     draftDb.baseLayoutSelectedConnectionId = connectionId;
+    if (connectionId) {
+      draftDb.baseLayoutSelectedBuildingId = null;
+    }
   },
 );
 

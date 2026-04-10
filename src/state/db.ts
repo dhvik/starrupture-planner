@@ -281,6 +281,7 @@ export interface AppState {
   energyGroups: EnergyGroup[];
   basesSelectedBaseId: string | null;
   baseLayoutConnectorMode: RailTier | null; // Active connector mode for creating connections
+  baseLayoutSelectedBuildingId: string | null; // Currently selected building in layout
   baseLayoutSelectedConnectionId: string | null; // Currently selected connection in layout
   baseLayoutItemPaletteMode: "production" | "receiver"; // Item palette mode: production buildings or package receivers
   uiConfirmationDialog: ConfirmationDialog;
@@ -320,6 +321,7 @@ const appState: AppState = {
   plannerTargetAmount: 60,
   basesSelectedBaseId: null,
   baseLayoutConnectorMode: null,
+  baseLayoutSelectedBuildingId: null,
   baseLayoutSelectedConnectionId: null,
   baseLayoutItemPaletteMode: "production",
   uiConfirmationDialog: {

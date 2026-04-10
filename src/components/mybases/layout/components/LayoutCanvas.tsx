@@ -61,6 +61,9 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const transferRates = useSubscription<Record<string, ConnectionTransferRate>>(
     [SUB_IDS.BASES_LAYOUT_CONNECTION_TRANSFER_RATES, baseId],
   );
+  const selectedBuildingId = useSubscription<string | null>([
+    SUB_IDS.BASES_LAYOUT_SELECTED_BUILDING_ID,
+  ]);
   const selectedConnectionId = useSubscription<string | null>([
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_ID,
   ]);
@@ -87,14 +90,23 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
           baseId,
           connectorMode,
           isConnectionSource,
+          selected: selectedBuildingId === building.id,
         },
         draggable: !connectorMode, // Disable dragging when in connector mode
         selectable: true,
+        selected: selectedBuildingId === building.id,
       };
     });
 
     setNodes(newNodes);
-  }, [buildings, baseId, connectorMode, connectionDrag, setNodes]);
+  }, [
+    buildings,
+    baseId,
+    connectorMode,
+    connectionDrag,
+    selectedBuildingId,
+    setNodes,
+  ]);
 
   // Fit view only once on initial load when there are buildings
   useEffect(() => {
@@ -264,6 +276,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       if (!connectorMode) {
+        dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING, node.id]);
         return;
       }
 
@@ -286,15 +299,18 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     [connectorMode, connectionDrag, handleConnect],
   );
 
-  // Handle pane click - cancel connection drag and deselect connection
+  // Handle pane click - cancel connection drag and clear selections
   const handlePaneClick = useCallback(() => {
     if (connectionDrag) {
       setConnectionDrag(null);
     }
+    if (selectedBuildingId) {
+      dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING, null]);
+    }
     if (selectedConnectionId) {
       dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, null]);
     }
-  }, [connectionDrag, selectedConnectionId]);
+  }, [connectionDrag, selectedBuildingId, selectedConnectionId]);
 
   // Handle edge click - select connection
   const handleEdgeClick = useCallback(
@@ -304,16 +320,25 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     [],
   );
 
-  // Handle keyboard events - Delete key removes selected connection
+  // Handle keyboard events - Delete key removes the selected building or connection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Delete" && selectedConnectionId) {
+      if (e.key !== "Delete") {
+        return;
+      }
+
+      if (selectedBuildingId) {
+        dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING]);
+        return;
+      }
+
+      if (selectedConnectionId) {
         dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION]);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedConnectionId]);
+  }, [selectedBuildingId, selectedConnectionId]);
 
   return (
     <div className={className}>

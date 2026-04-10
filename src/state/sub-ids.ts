@@ -63,6 +63,7 @@ export const SUB_IDS = {
   BASES_LAYOUT_BUILDINGS_BY_BASE_ID: "basesLayoutBuildingsByBaseId",
   BASES_LAYOUT_CONNECTIONS_BY_BASE_ID: "basesLayoutConnectionsByBaseId",
   BASES_LAYOUT_CONNECTOR_MODE: "baseLayoutConnectorMode",
+  BASES_LAYOUT_SELECTED_BUILDING_ID: "baseLayoutSelectedBuildingId",
   BASES_LAYOUT_SELECTED_CONNECTION_ID: "baseLayoutSelectedConnectionId",
   BASES_LAYOUT_ITEM_PALETTE_MODE: "baseLayoutItemPaletteMode",
   BASES_LAYOUT_CONNECTION_TRANSFER_RATES: "basesLayoutConnectionTransferRates",

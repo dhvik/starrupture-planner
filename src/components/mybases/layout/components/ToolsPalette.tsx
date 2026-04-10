@@ -21,6 +21,9 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const connectorMode = useSubscription<RailTier | null>([
     SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
   ]);
+  const selectedBuildingId = useSubscription<string | null>([
+    SUB_IDS.BASES_LAYOUT_SELECTED_BUILDING_ID,
+  ]);
   const selectedConnectionId = useSubscription<string | null>([
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_ID,
   ]);
@@ -33,10 +36,17 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   };
 
   const handleDeleteSelected = () => {
+    if (selectedBuildingId) {
+      dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING]);
+      return;
+    }
+
     if (selectedConnectionId) {
       dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION]);
     }
   };
+
+  const hasSelection = Boolean(selectedBuildingId || selectedConnectionId);
 
   const handleSetEditMode = () => {
     if (selectedBaseId) {
@@ -105,12 +115,14 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
         {/* Delete Connection Tool */}
         <button
           onClick={handleDeleteSelected}
-          disabled={!selectedConnectionId}
-          className={toolBtnClass(false, !selectedConnectionId)}
+          disabled={!hasSelection}
+          className={toolBtnClass(false, !hasSelection)}
           title={
-            selectedConnectionId
-              ? "Delete selected connection"
-              : "Select a connection first"
+            selectedBuildingId
+              ? "Delete selected building"
+              : selectedConnectionId
+                ? "Delete selected connection"
+                : "Select a building or connection first"
           }
         >
           <svg

@@ -39,6 +39,8 @@ export const EVENT_IDS = {
   BASES_LAYOUT_UPDATE_CONNECTION_TIER: "basesLayoutUpdateConnectionTier",
   BASES_LAYOUT_SET_GRID_OFFSET: "basesLayoutSetGridOffset",
   BASES_LAYOUT_SET_CONNECTOR_MODE: "basesLayoutSetConnectorMode",
+  BASES_LAYOUT_SET_SELECTED_BUILDING: "bases_layout/set_selected_building",
+  BASES_LAYOUT_DELETE_SELECTED_BUILDING: "bases_layout/delete_selected_building",
   BASES_LAYOUT_SET_SELECTED_CONNECTION: "bases_layout/set_selected_connection",
   BASES_LAYOUT_DELETE_SELECTED_CONNECTION:
     "bases_layout/delete_selected_connection",

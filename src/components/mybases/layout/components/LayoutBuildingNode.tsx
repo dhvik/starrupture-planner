@@ -35,6 +35,88 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     Record<string, BuildingProductionState>
   >([SUB_IDS.BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID, baseId]);
 
+  // Handler to toggle building mode
+  const handleToggleMode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch([
+      EVENT_IDS.BASES_LAYOUT_TOGGLE_BUILDING_MODE,
+      baseId,
+      building.id,
+    ]);
+  };
+
+  // Determine current mode (defaults to "edit")
+  const currentMode = building.mode || "edit";
+  const isSummaryMode = currentMode === "summary";
+
+  const formatRate = (rate: number): string => rate.toFixed(0);
+
+  const renderOutputRate = (
+    fallbackRate: number,
+    productionState?: BuildingProductionState,
+  ) => {
+    const actualRate = productionState?.actualOutputRate ?? fallbackRate;
+    const consumedRate = productionState?.consumedOutputRate ?? actualRate;
+    const surplusRate = Math.max(0, actualRate - consumedRate);
+
+    if (surplusRate <= 0) {
+      return <>{formatRate(actualRate)}/min</>;
+    }
+
+    return (
+      <>
+        {formatRate(consumedRate)}/
+        <span className="text-success font-semibold">
+          +{formatRate(surplusRate)}
+        </span>
+        /min
+      </>
+    );
+  };
+
+  const hasSurplusOutput = (
+    productionState?: BuildingProductionState,
+  ): boolean => {
+    if (!productionState) {
+      return false;
+    }
+
+    return (
+      productionState.actualOutputRate > productionState.consumedOutputRate
+    );
+  };
+
+  const getStateVisualClasses = (
+    hasDeficit: boolean,
+    hasSurplus: boolean,
+  ): {
+    borderClass: string;
+    backgroundClass: string;
+    summaryBackgroundClass: string;
+  } => {
+    if (hasDeficit) {
+      return {
+        borderClass: "border-error",
+        backgroundClass: "bg-error/12",
+        summaryBackgroundClass: "bg-error/18",
+      };
+    }
+
+    if (hasSurplus) {
+      return {
+        borderClass: "border-success",
+        backgroundClass: "bg-success/12",
+        summaryBackgroundClass: "bg-success/18",
+      };
+    }
+
+    return {
+      borderClass: "border-base-content/30",
+      backgroundClass: "bg-base-300",
+      summaryBackgroundClass: "bg-base-300/80",
+    };
+  };
+
   // Handle package receivers
   if (building.buildingType === "receiver") {
     const item = itemsById[building.itemId];
@@ -49,11 +131,21 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
       );
     }
 
+    const receiverVisualClasses = getStateVisualClasses(
+      false,
+      hasSurplusOutput(productionState),
+    );
+
     const borderClass = isConnectionSource
       ? "border-primary !border-4 shadow-2xl"
       : connectorMode
         ? "border-primary border-dashed"
-        : "border-info";
+        : receiverVisualClasses.borderClass;
+
+    // Glassy effect for summary mode
+    const containerClass = isSummaryMode
+      ? `backdrop-blur-md ${receiverVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`
+      : `${receiverVisualClasses.backgroundClass} rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all`;
 
     const handleRemove = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -80,7 +172,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           className="!bg-primary"
         />
         <div
-          className={`bg-base-200 rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all ${
+          className={`${containerClass} ${
             connectorMode
               ? "cursor-pointer hover:ring-4 hover:ring-primary/50 hover:shadow-2xl"
               : ""
@@ -95,14 +187,22 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
           {/* Header */}
           <div className="flex items-center justify-between mb-2 gap-1">
-            <div className="font-bold text-sm">Package Receiver</div>
-            <button
-              onClick={handleRemove}
-              className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
-              title="Remove receiver"
+            <div
+              className="font-bold text-sm cursor-pointer hover:text-primary"
+              onDoubleClick={handleToggleMode}
+              title="Double-click to toggle view mode"
             >
-              ✕
-            </button>
+              Package Receiver
+            </div>
+            {!isSummaryMode && (
+              <button
+                onClick={handleRemove}
+                className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
+                title="Remove receiver"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           {/* Receiver icon */}
@@ -111,48 +211,34 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           </div>
 
           {/* Item output */}
-          <div className="bg-base-300 rounded p-2">
+          <div className="rounded p-2 bg-base-300">
             <div className="flex items-center gap-2">
               <ItemImage itemId={item.id} size="small" />
               <div className="flex-1">
                 <div className="text-xs font-semibold truncate">
                   {item.name}
                 </div>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min="1"
-                    value={outputRate}
-                    onChange={handleOutputRateChange}
-                    onClick={(e) => e.stopPropagation()}
-                    className="input input-xs w-16 bg-base-100"
-                  />
-                  <span className="text-xs text-base-content/70">/min</span>
-                </div>
+                {!isSummaryMode && (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="1"
+                      value={outputRate}
+                      onChange={handleOutputRateChange}
+                      onClick={(e) => e.stopPropagation()}
+                      className="input input-xs w-16 bg-base-100"
+                    />
+                    <span className="text-xs text-base-content/70">/min</span>
+                  </div>
+                )}
+                {isSummaryMode && (
+                  <div className="text-xs text-base-content/70">
+                    {renderOutputRate(outputRate, productionState)}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Surplus output */}
-          {productionState &&
-            productionState.actualOutputRate > 0 &&
-            productionState.consumedOutputRate <
-              productionState.actualOutputRate && (
-              <div className="mt-2">
-                <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-success/20 text-success font-semibold">
-                  <ItemImage itemId={item.id} size="small" />
-                  <span className="flex-1 truncate">{item.name}</span>
-                  <span className="font-bold whitespace-nowrap">
-                    +
-                    {(
-                      productionState.actualOutputRate -
-                      productionState.consumedOutputRate
-                    ).toFixed(0)}
-                    /min
-                  </span>
-                </div>
-              </div>
-            )}
 
           {/* Stats */}
           <div className="mt-2 flex gap-2 text-xs text-base-content/70">
@@ -189,13 +275,13 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   const hasUnmetInputs = resourceTags.some(
     (tag) => tag.type === "input" && !tag.satisfied,
   );
-  const isThrottled =
-    productionState && productionState.productionFactor < 0.99;
+  const hasSurplus = hasSurplusOutput(productionState);
+  const buildingVisualClasses = getStateVisualClasses(
+    hasUnmetInputs,
+    hasSurplus,
+  );
 
-  let borderClass = hasUnmetInputs ? "border-error" : "border-success";
-  if (isThrottled && !hasUnmetInputs) {
-    borderClass = "border-warning"; // Partially running
-  }
+  let borderClass = buildingVisualClasses.borderClass;
 
   // Override border if in connector mode
   if (isConnectionSource) {
@@ -203,6 +289,11 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   } else if (connectorMode) {
     borderClass = "border-primary border-dashed";
   }
+
+  // Glassy effect for summary mode
+  const containerClass = isSummaryMode
+    ? `backdrop-blur-md ${buildingVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`
+    : `${buildingVisualClasses.backgroundClass} rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all`;
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -225,7 +316,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     <>
       <Handle type="target" position={Position.Left} className="!bg-primary" />
       <div
-        className={`bg-base-200 rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all ${
+        className={`${containerClass} ${
           connectorMode
             ? "cursor-pointer hover:ring-4 hover:ring-primary/50 hover:shadow-2xl"
             : ""
@@ -241,34 +332,46 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-2 gap-1">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <select
-              value={buildingCount}
-              onChange={handleCountChange}
-              onClick={(e) => e.stopPropagation()}
-              className="appearance-none bg-base-300 hover:bg-base-100 rounded px-1 py-0.5 text-xs font-bold cursor-pointer border border-base-content/20 w-[28px] text-center bg-[length:8px_8px] bg-no-repeat bg-[center_right_2px]"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23666' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E")`,
-              }}
-              title="Number of buildings"
+            {!isSummaryMode && (
+              <>
+                <select
+                  value={buildingCount}
+                  onChange={handleCountChange}
+                  onClick={(e) => e.stopPropagation()}
+                  className="appearance-none bg-base-300 hover:bg-base-100 rounded px-1 py-0.5 text-xs font-bold cursor-pointer border border-base-content/20 w-[28px] text-center bg-[length:8px_8px] bg-no-repeat bg-[center_right_2px]"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23666' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E")`,
+                  }}
+                  title="Number of buildings"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-semibold text-base-content/50">
+                  ×
+                </span>
+              </>
+            )}
+            <div
+              className="font-bold text-sm truncate cursor-pointer hover:text-primary"
+              onDoubleClick={handleToggleMode}
+              title="Double-click to toggle view mode"
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs font-semibold text-base-content/50">
-              ×
-            </span>
-            <div className="font-bold text-sm truncate">{buildingDef.name}</div>
+              {buildingDef.name}
+            </div>
           </div>
-          <button
-            onClick={handleRemove}
-            className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
-            title="Remove building"
-          >
-            ✕
-          </button>
+          {!isSummaryMode && (
+            <button
+              onClick={handleRemove}
+              className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
+              title="Remove building"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Building icon */}
@@ -277,18 +380,21 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
         </div>
 
         {/* Item output */}
-        <div className="bg-base-300 rounded p-2">
+        <div className="rounded p-2 bg-base-300">
           <div className="flex items-center gap-2">
             <ItemImage itemId={item.id} size="small" />
             <div className="flex-1">
               <div className="text-xs font-semibold truncate">{item.name}</div>
               <div className="text-xs text-base-content/70">
-                {recipe.output.amount_per_minute}/min
+                {renderOutputRate(
+                  recipe.output.amount_per_minute,
+                  productionState,
+                )}
               </div>
             </div>
           </div>
-          {/* Production progress bar */}
-          {productionState && (
+          {/* Production progress bar (hidden in summary mode) */}
+          {!isSummaryMode && productionState && (
             <div className="mt-2">
               <div className="flex justify-between text-xs mb-1">
                 <span
@@ -337,6 +443,11 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               // Skip output tags - they're shown in the main output section
               if (isOutput) return null;
 
+              // In summary mode, only show deficit inputs (fulfillment < 99%)
+              if (isSummaryMode && tag.fulfillmentRatio >= 0.99) {
+                return null;
+              }
+
               // Color scheme for inputs:
               // - Input (fully satisfied): neutral
               // - Input (partial): yellow/warning
@@ -373,27 +484,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             })}
           </div>
         )}
-
-        {/* Surplus output (unused production) */}
-        {productionState &&
-          productionState.actualOutputRate > 0 &&
-          productionState.consumedOutputRate <
-            productionState.actualOutputRate && (
-            <div className="mt-2">
-              <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-success/20 text-success font-semibold">
-                <ItemImage itemId={item.id} size="small" />
-                <span className="flex-1 truncate">{item.name}</span>
-                <span className="font-bold whitespace-nowrap">
-                  +
-                  {(
-                    productionState.actualOutputRate -
-                    productionState.consumedOutputRate
-                  ).toFixed(0)}
-                  /min
-                </span>
-              </div>
-            </div>
-          )}
 
         {/* Stats */}
         <div className="mt-2 flex gap-2 text-xs text-base-content/70">

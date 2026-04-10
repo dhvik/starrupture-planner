@@ -963,6 +963,42 @@ regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION, ({ draftDb }) => {
   return [persistBasesEffect(draftDb as AppState)];
 });
 
+/** Toggle building mode between edit and summary */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_TOGGLE_BUILDING_MODE,
+  ({ draftDb }, baseId: string, layoutBuildingId: string) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return [];
+
+    const building = base.layout.buildings.find(
+      (b) => b.id === layoutBuildingId,
+    );
+    if (!building) return [];
+
+    // Toggle mode: edit ↔ summary (undefined defaults to "edit")
+    const currentMode = building.mode || "edit";
+    building.mode = currentMode === "edit" ? "summary" : "edit";
+
+    return [persistBasesEffect(draftDb as AppState)];
+  },
+);
+
+/** Set all buildings in a layout to a specific mode */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,
+  ({ draftDb }, baseId: string, mode: "edit" | "summary") => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return [];
+
+    // Set mode for all buildings in the layout
+    base.layout.buildings.forEach((building) => {
+      building.mode = mode;
+    });
+
+    return [persistBasesEffect(draftDb as AppState)];
+  },
+);
+
 //===============================================
 //  PRODUCTION PLAN SECTIONS
 //===============================================

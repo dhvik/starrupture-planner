@@ -176,6 +176,7 @@ export interface EnergyGroup {
 // Base Layout types
 export type RailTier = 1 | 2 | 3;
 export type LayoutBuildingType = "production" | "receiver" | "storage";
+export type BuildingViewMode = "edit" | "summary";
 
 export interface BaseLayoutBuilding {
   id: string;
@@ -187,6 +188,7 @@ export interface BaseLayoutBuilding {
   count: number; // Number of building instances (1-8), acts as multiplier
   buildingType?: LayoutBuildingType; // Type of layout building (production, receiver, storage). Defaults to "production" if not set
   receiverOutputRate?: number; // Output rate for package receivers (default: 100 units/min)
+  mode?: BuildingViewMode; // Display mode for the building ("edit" | "summary"). Defaults to "edit" if not set
 }
 
 export interface BaseLayoutConnection {

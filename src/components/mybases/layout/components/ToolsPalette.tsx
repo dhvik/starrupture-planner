@@ -24,6 +24,9 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const selectedConnectionId = useSubscription<string | null>([
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_ID,
   ]);
+  const selectedBaseId = useSubscription<string | null>([
+    SUB_IDS.BASES_SELECTED_BASE_ID,
+  ]);
 
   const handleSelectTool = (tier: RailTier | null) => {
     dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, tier]);
@@ -32,6 +35,26 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const handleDeleteSelected = () => {
     if (selectedConnectionId) {
       dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION]);
+    }
+  };
+
+  const handleSetEditMode = () => {
+    if (selectedBaseId) {
+      dispatch([
+        EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,
+        selectedBaseId,
+        "edit",
+      ]);
+    }
+  };
+
+  const handleSetSummaryMode = () => {
+    if (selectedBaseId) {
+      dispatch([
+        EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,
+        selectedBaseId,
+        "summary",
+      ]);
     }
   };
 
@@ -105,6 +128,53 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
             <path d="M10 11v6" />
             <path d="M14 11v6" />
             <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+          </svg>
+        </button>
+
+        {/* Divider */}
+        <div className="w-px h-8 bg-base-300 self-center" />
+
+        {/* Edit Mode Button */}
+        <button
+          onClick={handleSetEditMode}
+          disabled={!selectedBaseId}
+          className={toolBtnClass(false, !selectedBaseId)}
+          title="Set all buildings to Edit mode"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+          </svg>
+        </button>
+
+        {/* Summary/Lock Mode Button */}
+        <button
+          onClick={handleSetSummaryMode}
+          disabled={!selectedBaseId}
+          className={toolBtnClass(false, !selectedBaseId)}
+          title="Set all buildings to Summary mode"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         </button>
       </div>

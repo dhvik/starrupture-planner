@@ -43,6 +43,8 @@ export const EVENT_IDS = {
   BASES_LAYOUT_DELETE_SELECTED_CONNECTION:
     "bases_layout/delete_selected_connection",
   BASES_LAYOUT_SET_ITEM_PALETTE_MODE: "bases_layout/set_item_palette_mode",
+  BASES_LAYOUT_TOGGLE_BUILDING_MODE: "bases_layout/toggle_building_mode",
+  BASES_LAYOUT_SET_ALL_BUILDINGS_MODE: "bases_layout/set_all_buildings_mode",
   BASES_LAYOUT_INIT: "basesLayoutInit",
 
   ENERGY_GROUP_CREATE: "energyGroupCreate",

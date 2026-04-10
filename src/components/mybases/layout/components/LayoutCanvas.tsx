@@ -326,7 +326,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
           position="top-right"
           className="bg-base-200 p-2 rounded-lg shadow-lg text-sm"
         >
-          <div className="text-base-content/70">
+          <div className="text-base-content/70" style={{display:"none"}}>
             <div>Zoom: Scroll wheel</div>
             <div>Pan: Click & drag background</div>
             <div>Move: Drag buildings</div>

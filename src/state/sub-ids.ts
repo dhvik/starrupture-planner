@@ -65,6 +65,8 @@ export const SUB_IDS = {
   BASES_LAYOUT_CONNECTOR_MODE: "baseLayoutConnectorMode",
   BASES_LAYOUT_SELECTED_CONNECTION_ID: "baseLayoutSelectedConnectionId",
   BASES_LAYOUT_CONNECTION_TRANSFER_RATES: "basesLayoutConnectionTransferRates",
+  BASES_LAYOUT_CAN_UNDO: "basesLayoutCanUndo",
+  BASES_LAYOUT_CAN_REDO: "basesLayoutCanRedo",
 
   ENERGY_GROUPS_LIST: "energyGroups",
   ENERGY_GROUPS_BY_ID_MAP: "energyGroupsByIdMap",

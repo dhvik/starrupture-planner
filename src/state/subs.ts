@@ -1363,6 +1363,40 @@ regSub(
 // Base Layout subscriptions
 //============================================================
 
+// Root sub for layout history
+const BASE_LAYOUT_HISTORY_ROOT = "baseLayoutHistory__root";
+regSub(BASE_LAYOUT_HISTORY_ROOT, "baseLayoutHistory");
+
+regSub(
+  SUB_IDS.BASES_LAYOUT_CAN_UNDO,
+  (
+    selectedBaseId: string | null,
+    history: Record<
+      string,
+      { undoStack: BaseLayout[]; redoStack: BaseLayout[] }
+    >,
+  ): boolean => {
+    if (!selectedBaseId) return false;
+    return (history[selectedBaseId]?.undoStack.length ?? 0) > 0;
+  },
+  () => [[SUB_IDS.BASES_SELECTED_BASE_ID], [BASE_LAYOUT_HISTORY_ROOT]],
+);
+
+regSub(
+  SUB_IDS.BASES_LAYOUT_CAN_REDO,
+  (
+    selectedBaseId: string | null,
+    history: Record<
+      string,
+      { undoStack: BaseLayout[]; redoStack: BaseLayout[] }
+    >,
+  ): boolean => {
+    if (!selectedBaseId) return false;
+    return (history[selectedBaseId]?.redoStack.length ?? 0) > 0;
+  },
+  () => [[SUB_IDS.BASES_SELECTED_BASE_ID], [BASE_LAYOUT_HISTORY_ROOT]],
+);
+
 regSub(
   SUB_IDS.BASES_LAYOUT_BY_BASE_ID,
   (base: Base | null): BaseLayout | undefined => {

@@ -41,6 +41,8 @@ export const EVENT_IDS = {
   BASES_LAYOUT_DELETE_SELECTED_CONNECTION:
     "bases_layout/delete_selected_connection",
   BASES_LAYOUT_INIT: "basesLayoutInit",
+  BASES_LAYOUT_UNDO: "bases_layout/undo",
+  BASES_LAYOUT_REDO: "bases_layout/redo",
 
   ENERGY_GROUP_CREATE: "energyGroupCreate",
   ENERGY_GROUP_DELETE: "energyGroupDelete",

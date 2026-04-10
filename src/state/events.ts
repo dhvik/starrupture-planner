@@ -9,6 +9,7 @@ import type {
   AppState,
   Base,
   BaseBuilding,
+  BaseLayout,
   BaseLayoutBuilding,
   EnergyGroup,
   Production,
@@ -104,6 +105,26 @@ function applyMatchInputs(draftDb: AppState): void {
 /** Returns a SET_BASES effect tuple that persists bases. */
 function persistBasesEffect(draftDb: AppState): [string, Base[]] {
   return [EFFECT_IDS.SET_BASES, current(draftDb.basesList)];
+}
+
+const MAX_UNDO_HISTORY = 50;
+
+/** Snapshot the current layout into the undo stack and clear the redo stack. */
+function pushLayoutHistory(draftDb: AppState, baseId: string): void {
+  const base = getBaseById(draftDb.basesList, baseId);
+  if (!base?.layout) return;
+
+  if (!draftDb.baseLayoutHistory[baseId]) {
+    draftDb.baseLayoutHistory[baseId] = { undoStack: [], redoStack: [] };
+  }
+
+  const history = draftDb.baseLayoutHistory[baseId];
+  const snapshot = current(base.layout) as BaseLayout;
+  history.undoStack.push(snapshot);
+  if (history.undoStack.length > MAX_UNDO_HISTORY) {
+    history.undoStack.shift();
+  }
+  history.redoStack = [];
 }
 
 /** Returns a SET_ENERGY_GROUPS effect tuple that persists energy groups. */
@@ -647,6 +668,40 @@ regEvent(EVENT_IDS.BASES_LAYOUT_INIT, ({ draftDb }, baseId: string) => {
   }
 });
 
+/** Undo the last layout action */
+regEvent(EVENT_IDS.BASES_LAYOUT_UNDO, ({ draftDb }, baseId: string) => {
+  const history = draftDb.baseLayoutHistory[baseId];
+  if (!history || history.undoStack.length === 0) return;
+
+  const base = getBaseById(draftDb.basesList, baseId);
+  if (!base?.layout) return;
+
+  const snapshot = current(base.layout) as BaseLayout;
+  history.redoStack.push(snapshot);
+
+  const previous = history.undoStack.pop()!;
+  base.layout = previous;
+
+  return [persistBasesEffect(draftDb as AppState)];
+});
+
+/** Redo the last undone layout action */
+regEvent(EVENT_IDS.BASES_LAYOUT_REDO, ({ draftDb }, baseId: string) => {
+  const history = draftDb.baseLayoutHistory[baseId];
+  if (!history || history.redoStack.length === 0) return;
+
+  const base = getBaseById(draftDb.basesList, baseId);
+  if (!base?.layout) return;
+
+  const snapshot = current(base.layout) as BaseLayout;
+  history.undoStack.push(snapshot);
+
+  const next = history.redoStack.pop()!;
+  base.layout = next;
+
+  return [persistBasesEffect(draftDb as AppState)];
+});
+
 /** Add a building to the layout */
 regEvent(
   EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
@@ -679,6 +734,8 @@ regEvent(
       return;
     }
 
+    pushLayoutHistory(draftDb as AppState, baseId);
+
     const layoutBuilding = {
       id: createEntityId("layout_building"),
       x,
@@ -700,6 +757,8 @@ regEvent(
   ({ draftDb }, baseId: string, layoutBuildingId: string) => {
     const base = getBaseById(draftDb.basesList, baseId);
     if (!base || !base.layout) return;
+
+    pushLayoutHistory(draftDb as AppState, baseId);
 
     // Remove the building
     base.layout.buildings = base.layout.buildings.filter(
@@ -744,6 +803,8 @@ regEvent(
       return;
     }
 
+    pushLayoutHistory(draftDb as AppState, baseId);
+
     building.x = newX;
     building.y = newY;
 
@@ -768,6 +829,8 @@ regEvent(
 
     // Clamp count to 1-8
     const newCount = Math.max(1, Math.min(8, Math.round(count)));
+
+    pushLayoutHistory(draftDb as AppState, baseId);
 
     // Use current() to get real values from Immer draft, then create new objects
     const currentBase = current(base);
@@ -827,6 +890,8 @@ regEvent(
       return;
     }
 
+    pushLayoutHistory(draftDb as AppState, baseId);
+
     const connection = {
       id: createEntityId("layout_connection"),
       fromBuildingId,
@@ -847,6 +912,8 @@ regEvent(
     const base = getBaseById(draftDb.basesList, baseId);
     if (!base || !base.layout) return;
 
+    pushLayoutHistory(draftDb as AppState, baseId);
+
     base.layout.connections = base.layout.connections.filter(
       (c) => c.id !== connectionId,
     );
@@ -865,6 +932,8 @@ regEvent(
       (c) => c.id === connectionId,
     );
     if (!connection) return;
+
+    pushLayoutHistory(draftDb as AppState, baseId);
 
     connection.railTier = railTier;
     return [persistBasesEffect(draftDb as AppState)];
@@ -911,6 +980,8 @@ regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION, ({ draftDb }) => {
 
   const base = getBaseById(draftDb.basesList, selectedBaseId);
   if (!base || !base.layout) return;
+
+  pushLayoutHistory(draftDb as AppState, selectedBaseId);
 
   base.layout.connections = base.layout.connections.filter(
     (c) => c.id !== connectionId,

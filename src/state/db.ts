@@ -277,6 +277,10 @@ export interface AppState {
   basesSelectedBaseId: string | null;
   baseLayoutConnectorMode: RailTier | null; // Active connector mode for creating connections
   baseLayoutSelectedConnectionId: string | null; // Currently selected connection in layout
+  baseLayoutHistory: Record<
+    string,
+    { undoStack: BaseLayout[]; redoStack: BaseLayout[] }
+  >; // Undo/redo history per base
   uiConfirmationDialog: ConfirmationDialog;
   productionPlanModalState: CreateProductionPlanModalState;
 }
@@ -315,6 +319,7 @@ const appState: AppState = {
   basesSelectedBaseId: null,
   baseLayoutConnectorMode: null,
   baseLayoutSelectedConnectionId: null,
+  baseLayoutHistory: {},
   uiConfirmationDialog: {
     isOpen: false,
     title: "",

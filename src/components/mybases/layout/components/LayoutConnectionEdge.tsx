@@ -18,7 +18,7 @@ const LABEL_SPACING = 180; // pixels between repeated labels
 const EDGE_HIT_WIDTH = 20; // wider invisible stroke for easier interaction
 
 const LayoutConnectionEdge = memo((props: EdgeProps) => {
-  const { sourceX, sourceY, targetX, targetY, markerEnd, style, id } = props;
+  const { sourceX, sourceY, targetX, targetY, markerEnd, id } = props;
   const data = props.data as LayoutConnectionEdgeData | undefined;
 
   if (!data) {
@@ -53,9 +53,6 @@ const LayoutConnectionEdge = memo((props: EdgeProps) => {
 
     const count = Math.max(1, Math.floor(edgeLength / LABEL_SPACING));
     const positions: Array<{ x: number; y: number }> = [];
-    const unitX = dx / edgeLength;
-    const unitY = dy / edgeLength;
-
     for (let i = 0; i < count; i++) {
       const t = (i + 0.5) / count;
       positions.push({

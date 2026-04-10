@@ -105,9 +105,9 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             </button>
           </div>
 
-          {/* Receiver icon (using a package/box icon) */}
+          {/* Receiver icon */}
           <div className="flex justify-center mb-2">
-            <div className="text-4xl">📦</div>
+            <BuildingImage buildingId="package_receiver" size="large" />
           </div>
 
           {/* Item output */}

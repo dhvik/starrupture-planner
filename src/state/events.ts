@@ -940,6 +940,58 @@ regEvent(
     const base = getBaseById(draftDb.basesList, baseId);
     if (!base || !base.layout) return;
 
+    if (fromBuildingId === toBuildingId) {
+      console.warn("Cannot connect a building to itself");
+      return;
+    }
+
+    const sourceBuilding = base.layout.buildings.find(
+      (building) => building.id === fromBuildingId,
+    );
+    const targetBuilding = base.layout.buildings.find(
+      (building) => building.id === toBuildingId,
+    );
+
+    if (!sourceBuilding || !targetBuilding) {
+      console.warn("Connection endpoints not found");
+      return;
+    }
+
+    const buildingsById = new Map<string, Building>(
+      draftDb.buildingsList.map((building: Building) => [building.id, building]),
+    );
+    const sourceBuildingDef = buildingsById.get(sourceBuilding.buildingId);
+    const targetBuildingDef = buildingsById.get(targetBuilding.buildingId);
+
+    if (!sourceBuildingDef || !targetBuildingDef) {
+      console.warn("Connection building definitions not found");
+      return;
+    }
+
+    if (sourceBuilding.buildingType === "receiver") {
+      if (sourceBuilding.itemId !== itemId) {
+        console.warn("Receiver does not output the requested item");
+        return;
+      }
+    } else {
+      const sourceRecipe =
+        sourceBuildingDef.recipes?.[sourceBuilding.recipeIndex];
+      if (!sourceRecipe || sourceRecipe.output.id !== itemId) {
+        console.warn("Source building does not output the requested item");
+        return;
+      }
+    }
+
+    const targetRecipe = targetBuildingDef.recipes?.[targetBuilding.recipeIndex];
+    const targetAcceptsItem = targetRecipe?.inputs.some(
+      (input: { id: string }) => input.id === itemId,
+    );
+
+    if (!targetAcceptsItem) {
+      console.warn("Target building does not accept the requested item");
+      return;
+    }
+
     // Check if connection already exists
     const exists = base.layout.connections.some(
       (c) =>

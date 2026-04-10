@@ -19,13 +19,26 @@ interface LayoutBuildingNodeData {
   baseId: string;
   connectorMode?: RailTier | null;
   isConnectionSource?: boolean;
+  isConnectionTarget?: boolean;
   selected?: boolean;
 }
 
+const OUTPUT_HANDLE_CLASS =
+  "!h-6 !w-6 !rounded-full !border-4 !border-base-100 !bg-primary shadow-lg";
+
+const INPUT_HANDLE_CLASS =
+  "!h-4 !w-4 !rounded-full !border-2 !border-base-100 !bg-base-content/70 shadow-md";
+
 const LayoutBuildingNode = memo((props: NodeProps) => {
   const data = props.data as unknown as LayoutBuildingNodeData;
-  const { building, baseId, connectorMode, isConnectionSource, selected } =
-    data;
+  const {
+    building,
+    baseId,
+    connectorMode,
+    isConnectionSource,
+    isConnectionTarget,
+    selected,
+  } = data;
 
   const buildingsById = useSubscription<Record<string, Building>>([
     SUB_IDS.BUILDINGS_BY_ID_MAP,
@@ -139,6 +152,8 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
       ? "border-primary !border-4 shadow-2xl"
       : selected
         ? "border-info !border-4 shadow-2xl"
+        : isConnectionTarget
+          ? "border-success !border-4 shadow-2xl"
         : connectorMode
           ? "border-primary border-dashed"
           : receiverVisualClasses.borderClass;
@@ -169,7 +184,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
         <Handle
           type="source"
           position={Position.Right}
-          className="!bg-primary"
+          className={OUTPUT_HANDLE_CLASS}
         />
         <div
           className={`${containerClass} ${
@@ -177,6 +192,8 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               ? "cursor-pointer hover:ring-4 hover:ring-primary/50 hover:shadow-2xl"
               : ""
           } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
+            isConnectionTarget ? "ring-4 ring-success/40" : ""
+          } ${
             selected ? "ring-4 ring-info/40" : ""
           }`}
           style={{ pointerEvents: "all" }}
@@ -282,6 +299,8 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     borderClass = "border-primary !border-4 shadow-2xl";
   } else if (selected) {
     borderClass = "border-info !border-4 shadow-2xl";
+  } else if (isConnectionTarget) {
+    borderClass = "border-success !border-4 shadow-2xl";
   } else if (connectorMode) {
     borderClass = "border-primary border-dashed";
   }
@@ -309,13 +328,19 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
   return (
     <>
-      <Handle type="target" position={Position.Left} className="!bg-primary" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className={INPUT_HANDLE_CLASS}
+      />
       <div
         className={`${containerClass} ${
           connectorMode
             ? "cursor-pointer hover:ring-4 hover:ring-primary/50 hover:shadow-2xl"
             : ""
         } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
+          isConnectionTarget ? "ring-4 ring-success/40" : ""
+        } ${
           selected ? "ring-4 ring-info/40" : ""
         }`}
         style={{ pointerEvents: "all" }}
@@ -473,7 +498,11 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           {buildingDef.heat && <div>🔥 {buildingDef.heat}</div>}
         </div>
       </div>
-      <Handle type="source" position={Position.Right} className="!bg-primary" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className={OUTPUT_HANDLE_CLASS}
+      />
     </>
   );
 });

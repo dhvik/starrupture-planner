@@ -8,7 +8,6 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
-  useStoreApi,
   type Node,
   type Edge,
   type Connection,
@@ -29,6 +28,7 @@ import type {
 } from "../../../../state/db";
 import type { ConnectionTransferRate } from "../utils/layoutBalanceCalculator";
 import { gridToPixels, GRID_CELL_SIZE } from "../utils/gridUtils";
+import { validateConnection } from "../utils/connectionValidator";
 import LayoutBuildingNode from "./LayoutBuildingNode";
 import LayoutConnectionEdge from "./LayoutConnectionEdge";
 
@@ -45,12 +45,42 @@ const edgeTypes = {
   layoutConnection: LayoutConnectionEdge,
 };
 
+interface ConnectionDragState {
+  fromNodeId: string;
+  itemId: string;
+  validTargetIds: string[];
+}
+
+function getClientPositionFromPointerEvent(
+  event: MouseEvent | TouchEvent,
+): { clientX: number; clientY: number } | null {
+  if ("changedTouches" in event && event.changedTouches.length > 0) {
+    const touch = event.changedTouches[0];
+    return {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+    };
+  }
+
+  if ("clientX" in event && "clientY" in event) {
+    return {
+      clientX: event.clientX,
+      clientY: event.clientY,
+    };
+  }
+
+  return null;
+}
+
 function areSelectedIdsEqual(left: string[], right: string[]): boolean {
   if (left.length !== right.length) {
     return false;
   }
 
-  return left.every((id, index) => id === right[index]);
+  const normalizedLeft = [...left].sort();
+  const normalizedRight = [...right].sort();
+
+  return normalizedLeft.every((id, index) => id === normalizedRight[index]);
 }
 
 const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
@@ -82,18 +112,27 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_IDS,
   ]);
   const { screenToFlowPosition, fitView } = useReactFlow();
-  const flowStore = useStoreApi();
   const hasInitializedView = useRef(false);
   const suppressNextNodeClick = useRef(false);
   const suppressNextPaneClick = useRef(false);
-  const [connectionDrag, setConnectionDrag] = useState<{
-    fromNodeId: string;
-  } | null>(null);
+  const didCompleteConnection = useRef(false);
+  const connectionDragRef = useRef<ConnectionDragState | null>(null);
+  const [connectionDrag, setConnectionDrag] = useState<ConnectionDragState | null>(
+    null,
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const isPanMode = pointerMode === "pan" && !connectorMode;
   const isSelectMode = pointerMode === "select" && !connectorMode;
+
+  const setActiveConnectionDrag = useCallback(
+    (nextDrag: ConnectionDragState | null) => {
+      connectionDragRef.current = nextDrag;
+      setConnectionDrag(nextDrag);
+    },
+    [],
+  );
 
   // Convert layout buildings to ReactFlow nodes
   useEffect(() => {
@@ -109,6 +148,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
           baseId,
           connectorMode,
           isConnectionSource,
+          isConnectionTarget:
+            connectionDrag?.validTargetIds.includes(building.id) ?? false,
           selected: selectedBuildingIds.includes(building.id),
         },
         draggable: !connectorMode, // Disable dragging when in connector mode
@@ -148,6 +189,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         source: connection.fromBuildingId,
         target: connection.toBuildingId,
         type: "layoutConnection",
+        selected: isSelected,
         data: {
           connection,
           baseId,
@@ -202,7 +244,6 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       suppressNextNodeClick.current = true;
       suppressNextPaneClick.current = true;
-      flowStore.setState({ nodesSelectionActive: false });
 
       dispatch([
         EVENT_IDS.BASES_LAYOUT_SET_SELECTION,
@@ -236,7 +277,90 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       dispatch([EVENT_IDS.BASES_LAYOUT_MOVE_BUILDINGS, baseId, moves]);
     },
-    [baseId, flowStore],
+    [baseId],
+  );
+
+  const getSourceItemId = useCallback(
+    (sourceBuilding: BaseLayoutBuilding): string | null => {
+      if (sourceBuilding.buildingType === "receiver") {
+        return sourceBuilding.itemId;
+      }
+
+      const sourceBuildingDef = buildingsById[sourceBuilding.buildingId];
+      const sourceRecipe = sourceBuildingDef?.recipes?.[sourceBuilding.recipeIndex];
+
+      return sourceRecipe?.output.id ?? null;
+    },
+    [buildingsById],
+  );
+
+  const validateConnectionAttempt = useCallback(
+    (
+      sourceId: string,
+      targetId: string,
+    ): {
+      isValid: boolean;
+      itemId: string | null;
+    } => {
+      if (sourceId === targetId) {
+        return { isValid: false, itemId: null };
+      }
+
+      const sourceBuilding = buildings.find((building) => building.id === sourceId);
+      const targetBuilding = buildings.find((building) => building.id === targetId);
+
+      if (!sourceBuilding || !targetBuilding) {
+        return { isValid: false, itemId: null };
+      }
+
+      const itemId = getSourceItemId(sourceBuilding);
+      if (!itemId) {
+        return { isValid: false, itemId: null };
+      }
+
+      const validation = validateConnection(
+        sourceBuilding,
+        targetBuilding,
+        itemId,
+        connectorMode ?? 1,
+        buildingsById,
+        connections,
+      );
+
+      return {
+        isValid: validation.isValid,
+        itemId,
+      };
+    },
+    [buildings, buildingsById, connections, connectorMode, getSourceItemId],
+  );
+
+  const startConnectionDrag = useCallback(
+    (sourceId: string) => {
+      const sourceBuilding = buildings.find((building) => building.id === sourceId);
+      if (!sourceBuilding) {
+        setActiveConnectionDrag(null);
+        return;
+      }
+
+      const itemId = getSourceItemId(sourceBuilding);
+      if (!itemId) {
+        setActiveConnectionDrag(null);
+        return;
+      }
+
+      const validTargetIds = buildings
+        .filter((building) => building.id !== sourceId)
+        .filter((building) => validateConnectionAttempt(sourceId, building.id).isValid)
+        .map((building) => building.id);
+
+      setActiveConnectionDrag({
+        fromNodeId: sourceId,
+        itemId,
+        validTargetIds,
+      });
+    },
+    [buildings, getSourceItemId, setActiveConnectionDrag, validateConnectionAttempt],
   );
 
   // Handle connection creation
@@ -244,29 +368,17 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
 
-      // Find source building
-      const sourceBuilding = buildings.find((b) => b.id === connection.source);
-      if (!sourceBuilding) return;
-
-      let itemId: string;
-
-      // Handle package receivers differently - they don't have recipes
-      if (sourceBuilding.buildingType === "receiver") {
-        itemId = sourceBuilding.itemId;
-      } else {
-        // Get building definition and recipe for production buildings
-        const buildingDef = buildingsById[sourceBuilding.buildingId];
-        if (!buildingDef || !buildingDef.recipes) return;
-
-        const recipe = buildingDef.recipes[sourceBuilding.recipeIndex];
-        if (!recipe) return;
-
-        // The item being transferred is the output of the source building
-        itemId = recipe.output.id;
+      const validation = validateConnectionAttempt(
+        connection.source,
+        connection.target,
+      );
+      if (!validation.isValid || !validation.itemId) {
+        return;
       }
 
       // Use connector mode rail tier, default to tier 1
       const railTier: RailTier = connectorMode ?? 1;
+      didCompleteConnection.current = true;
 
       // Dispatch add connection event
       dispatch([
@@ -274,14 +386,83 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         baseId,
         connection.source,
         connection.target,
-        itemId,
+        validation.itemId,
         railTier,
       ]);
 
       // Clear connection drag state
-      setConnectionDrag(null);
+      setActiveConnectionDrag(null);
     },
-    [baseId, buildings, buildingsById, connectorMode],
+    [baseId, connectorMode, setActiveConnectionDrag, validateConnectionAttempt],
+  );
+
+  const handleConnectStart = useCallback(
+    (
+      _event: MouseEvent | TouchEvent,
+      params: { nodeId?: string | null; handleType?: string | null },
+    ) => {
+      didCompleteConnection.current = false;
+
+      if (params.handleType !== "source" || !params.nodeId) {
+        setActiveConnectionDrag(null);
+        return;
+      }
+
+      startConnectionDrag(params.nodeId);
+    },
+    [startConnectionDrag],
+  );
+
+  const handleConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent) => {
+      if (didCompleteConnection.current) {
+        didCompleteConnection.current = false;
+        setActiveConnectionDrag(null);
+        return;
+      }
+
+      const activeConnectionDrag = connectionDragRef.current;
+
+      if (!activeConnectionDrag) {
+        return;
+      }
+
+      const clientPosition = getClientPositionFromPointerEvent(event);
+      if (!clientPosition) {
+        setActiveConnectionDrag(null);
+        return;
+      }
+
+      const dropTarget = document.elementFromPoint(
+        clientPosition.clientX,
+        clientPosition.clientY,
+      );
+
+      if (!(dropTarget instanceof Element)) {
+        setActiveConnectionDrag(null);
+        return;
+      }
+
+      const targetNode = dropTarget.closest(".react-flow__node");
+      const targetId = targetNode?.getAttribute("data-id");
+
+      if (
+        targetId &&
+        activeConnectionDrag.validTargetIds.includes(targetId) &&
+        targetId !== activeConnectionDrag.fromNodeId
+      ) {
+        handleConnect({
+          source: activeConnectionDrag.fromNodeId,
+          target: targetId,
+          sourceHandle: null,
+          targetHandle: null,
+        });
+        return;
+      }
+
+      setActiveConnectionDrag(null);
+    },
+    [handleConnect, setActiveConnectionDrag],
   );
 
   // Handle drop from palette
@@ -361,21 +542,33 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       if (!connectionDrag) {
         // Start connection drag
-        setConnectionDrag({ fromNodeId: node.id });
+        startConnectionDrag(node.id);
       } else {
+        if (connectionDrag.fromNodeId === node.id) {
+          setActiveConnectionDrag(null);
+          return;
+        }
+
         // Complete connection
-        if (connectionDrag.fromNodeId !== node.id) {
+        if (connectionDrag.validTargetIds.includes(node.id)) {
           handleConnect({
             source: connectionDrag.fromNodeId,
             target: node.id,
             sourceHandle: null,
             targetHandle: null,
           });
+          return;
         }
-        setConnectionDrag(null);
       }
     },
-    [connectorMode, connectionDrag, handleConnect, pointerMode],
+    [
+      connectorMode,
+      connectionDrag,
+      handleConnect,
+      pointerMode,
+      setActiveConnectionDrag,
+      startConnectionDrag,
+    ],
   );
 
   const handleSelectionChange = useCallback(
@@ -386,8 +579,6 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       const nextSelectedNodeIds = selectedNodes.map((node) => node.id);
       const nextSelectedEdgeIds = selectedEdges.map((edge) => edge.id);
-
-      flowStore.setState({ nodesSelectionActive: false });
 
       if (
         areSelectedIdsEqual(nextSelectedNodeIds, selectedBuildingIds) &&
@@ -404,7 +595,6 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     },
     [
       connectorMode,
-      flowStore,
       pointerMode,
       selectedBuildingIds,
       selectedConnectionIds,
@@ -419,23 +609,26 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     }
 
     if (connectionDrag) {
-      setConnectionDrag(null);
+      setActiveConnectionDrag(null);
     }
     if (selectedBuildingIds.length > 0 || selectedConnectionIds.length > 0) {
       dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTION, [], []]);
     }
   }, [
     connectionDrag,
+    setActiveConnectionDrag,
     selectedBuildingIds.length,
     selectedConnectionIds.length,
   ]);
 
   // Handle edge click - select connection
   const handleEdgeClick = useCallback(
-    (_event: React.MouseEvent, edge: Edge) => {
+    (event: React.MouseEvent, edge: Edge) => {
       if (pointerMode !== "select") {
         return;
       }
+      event.stopPropagation();
+      suppressNextPaneClick.current = true;
       dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, edge.id]);
     },
     [pointerMode],
@@ -470,6 +663,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         onEdgesChange={onEdgesChange}
         onNodeDragStop={handleNodeDragStop}
         onConnect={handleConnect}
+        onConnectStart={handleConnectStart}
+        onConnectEnd={handleConnectEnd}
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
         onSelectionChange={handleSelectionChange}
@@ -487,12 +682,12 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         minZoom={0.1}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        autoPanOnNodeDrag={false}
         panOnDrag={isPanMode}
         selectionOnDrag={isSelectMode}
+        selectNodesOnDrag={false}
         selectionMode={SelectionMode.Full}
-        connectionMode={
-          connectorMode ? ConnectionMode.Loose : ConnectionMode.Strict
-        }
+        connectionMode={ConnectionMode.Strict}
       >
         <Background gap={GRID_CELL_SIZE} size={2} />
         <Controls />

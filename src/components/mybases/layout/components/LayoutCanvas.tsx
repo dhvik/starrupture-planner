@@ -527,7 +527,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
   // Handle node click when in connector mode
   const handleNodeClick = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (event: React.MouseEvent, node: Node) => {
       if (suppressNextNodeClick.current) {
         suppressNextNodeClick.current = false;
         return;
@@ -537,6 +537,16 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         if (!allowsSingleSelection) {
           return;
         }
+
+        if (event.ctrlKey || event.metaKey) {
+          const isAlreadySelected = selectedBuildingIds.includes(node.id);
+          const nextIds = isAlreadySelected
+            ? selectedBuildingIds.filter((id) => id !== node.id)
+            : [...selectedBuildingIds, node.id];
+          dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTION, nextIds, []]);
+          return;
+        }
+
         dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING, node.id]);
         return;
       }
@@ -567,6 +577,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       connectorMode,
       connectionDrag,
       handleConnect,
+      selectedBuildingIds,
       setActiveConnectionDrag,
       startConnectionDrag,
     ],
@@ -630,9 +641,19 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       }
       event.stopPropagation();
       suppressNextPaneClick.current = true;
+
+      if (event.ctrlKey || event.metaKey) {
+        const isAlreadySelected = selectedConnectionIds.includes(edge.id);
+        const nextIds = isAlreadySelected
+          ? selectedConnectionIds.filter((id) => id !== edge.id)
+          : [...selectedConnectionIds, edge.id];
+        dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTION, [], nextIds]);
+        return;
+      }
+
       dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, edge.id]);
     },
-    [allowsSingleSelection],
+    [allowsSingleSelection, selectedConnectionIds],
   );
 
   // Handle keyboard events - Delete key removes the selected building or connection

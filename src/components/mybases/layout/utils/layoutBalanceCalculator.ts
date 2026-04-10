@@ -1,7 +1,6 @@
 import type {
   BaseLayout,
   BaseLayoutBalance,
-  BaseLayoutBuilding,
   BuildingsByIdMap,
   BaseLayoutConnection,
   DistributionMode,

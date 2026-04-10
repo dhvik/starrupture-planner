@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { useSubscription, dispatch } from "@flexsurfer/reflex";
@@ -130,6 +130,49 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     };
   };
 
+  // Local state for the receiver output-rate input stored as a string so the
+  // field can be freely edited (empty, partial) without triggering validation.
+  // Validation and dispatch happen only when the field loses focus or Enter/Tab.
+  const [localOutputRate, setLocalOutputRate] = useState(
+    () => String(building.receiverOutputRate || 100),
+  );
+  useEffect(() => {
+    setLocalOutputRate(String(building.receiverOutputRate || 100));
+  }, [building.receiverOutputRate]);
+
+  const handleOutputRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalOutputRate(e.target.value);
+  };
+
+  const handleOutputRateCommit = () => {
+    const parsed = parseInt(localOutputRate, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      dispatch([
+        EVENT_IDS.BASES_LAYOUT_UPDATE_RECEIVER_OUTPUT_RATE,
+        baseId,
+        building.id,
+        parsed,
+      ]);
+    } else {
+      // Revert to the last persisted value if the input is empty or invalid
+      setLocalOutputRate(String(building.receiverOutputRate || 100));
+    }
+  };
+
+  const handleOutputRateKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    } else if (e.key === "Tab") {
+      // Prevent the default tab-to-next-focusable behaviour and instead land
+      // focus on the parent ReactFlow node so the user stays in context.
+      e.preventDefault();
+      const rfNode = e.currentTarget.closest(".react-flow__node") as HTMLElement | null;
+      e.currentTarget.blur();
+      rfNode?.focus();
+    }
+  };
+
   if (building.buildingType === "receiver") {
     const item = itemsById[building.itemId];
     const productionState = buildingStates?.[building.id];
@@ -165,18 +208,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     const handleRemove = (e: React.MouseEvent) => {
       e.stopPropagation();
       dispatch([EVENT_IDS.BASES_LAYOUT_REMOVE_BUILDING, baseId, building.id]);
-    };
-
-    const handleOutputRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newRate = parseInt(e.target.value, 10);
-      if (newRate > 0) {
-        dispatch([
-          EVENT_IDS.BASES_LAYOUT_UPDATE_RECEIVER_OUTPUT_RATE,
-          baseId,
-          building.id,
-          newRate,
-        ]);
-      }
     };
 
     return (
@@ -238,11 +269,12 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
-                      min="1"
-                      value={outputRate}
+                      value={localOutputRate}
                       onChange={handleOutputRateChange}
+                      onBlur={handleOutputRateCommit}
+                      onKeyDown={handleOutputRateKeyDown}
                       onClick={(e) => e.stopPropagation()}
-                      className="input input-xs w-16 bg-base-100"
+                      className="nodrag input input-xs w-16 bg-base-100"
                     />
                     <span className="text-xs text-base-content/70">/min</span>
                   </div>

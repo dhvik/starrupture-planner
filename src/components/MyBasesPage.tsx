@@ -61,7 +61,9 @@ const MyBasesPage = () => {
   // Render base detail view
   if (selectedBase) {
     return (
-      <BaseDetailView />
+      <div className="h-full min-h-0">
+        <BaseDetailView />
+      </div>
     );
   }
 

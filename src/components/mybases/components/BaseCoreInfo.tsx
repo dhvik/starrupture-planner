@@ -167,6 +167,7 @@ export const BaseCoreInfo: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

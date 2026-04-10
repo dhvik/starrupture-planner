@@ -89,22 +89,6 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   return (
     <div className={`flex flex-col ${className}`}>
       <div className="p-3 flex flex-wrap gap-2">
-        {/* Select Tool */}
-        <button
-          onClick={() => handleSetPointerMode("select")}
-          className={toolBtnClass(pointerMode === "select" && !connectorMode)}
-          title="Select — Click items or drag a selection rectangle"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M4 2l12 9.5-5.1 1.2L15.5 22l-3.1 1.3L7.8 14 4 18V2z" />
-          </svg>
-        </button>
-
         {/* Pan Tool */}
         <button
           onClick={() => handleSetPointerMode("pan")}
@@ -121,14 +105,27 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M12 2v7" />
-            <path d="m15 6-3-4-3 4" />
-            <path d="M12 22v-7" />
-            <path d="m9 18 3 4 3-4" />
-            <path d="M2 12h7" />
-            <path d="m6 15-4-3 4-3" />
-            <path d="M22 12h-7" />
-            <path d="m18 9 4 3-4 3" />
+            <path d="M8 11V5a1 1 0 1 1 2 0v5" />
+            <path d="M12 11V4a1 1 0 1 1 2 0v7" />
+            <path d="M16 11V6a1 1 0 1 1 2 0v8" />
+            <path d="M6 12.5V10a1 1 0 1 1 2 0v4" />
+            <path d="M18 12v-1a1 1 0 1 1 2 0v4.5c0 1.7-.7 3.4-1.9 4.7L17 21H9.5a3.5 3.5 0 0 1-2.8-1.4l-2.5-3.3a1 1 0 0 1 1.6-1.2L8 17" />
+          </svg>
+        </button>
+
+        {/* Select Tool */}
+        <button
+          onClick={() => handleSetPointerMode("select")}
+          className={toolBtnClass(pointerMode === "select" && !connectorMode)}
+          title="Select — Click items or drag a selection rectangle"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M4 2l12 9.5-5.1 1.2L15.5 22l-3.1 1.3L7.8 14 4 18V2z" />
           </svg>
         </button>
 

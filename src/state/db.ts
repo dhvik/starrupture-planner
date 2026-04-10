@@ -324,7 +324,7 @@ const appState: AppState = {
   plannerRecipeSelections: {},
   plannerTargetAmount: 60,
   basesSelectedBaseId: null,
-  baseLayoutPointerMode: "select",
+  baseLayoutPointerMode: "pan",
   baseLayoutConnectorMode: null,
   baseLayoutSelectedBuildingIds: [],
   baseLayoutSelectedBuildingId: null,

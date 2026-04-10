@@ -107,19 +107,19 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     backgroundClass: string;
     summaryBackgroundClass: string;
   } => {
-    if (hasDeficit) {
-      return {
-        borderClass: "border-error",
-        backgroundClass: "bg-error/12",
-        summaryBackgroundClass: "bg-error/18",
-      };
-    }
-
     if (hasSurplus) {
       return {
         borderClass: "border-success",
         backgroundClass: "bg-success/12",
         summaryBackgroundClass: "bg-success/18",
+      };
+    }
+
+    if (hasDeficit) {
+      return {
+        borderClass: "border-error",
+        backgroundClass: "bg-error/12",
+        summaryBackgroundClass: "bg-error/18",
       };
     }
 

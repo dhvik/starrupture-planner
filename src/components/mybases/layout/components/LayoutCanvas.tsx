@@ -135,39 +135,56 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     [],
   );
 
-  // Convert layout buildings to ReactFlow nodes
+  // Convert layout buildings to ReactFlow nodes.
+  // Does NOT track selectedBuildingIds — selection is handled in its own effect
+  // below so that a click never triggers a full rebuild of every node.
   useEffect(() => {
-    const newNodes: Node[] = buildings.map((building) => {
-      const pixelPos = gridToPixels(building.x, building.y);
-      const isConnectionSource = connectionDrag?.fromNodeId === building.id;
-      return {
-        id: building.id,
-        type: "layoutBuilding",
-        position: pixelPos,
-        data: {
-          building,
-          baseId,
-          connectorMode,
-          isConnectionSource,
-          isConnectionTarget:
-            connectionDrag?.validTargetIds.includes(building.id) ?? false,
-          selected: selectedBuildingIds.includes(building.id),
-        },
-        draggable: !connectorMode, // Disable dragging when in connector mode
-        selectable: true,
-        selected: selectedBuildingIds.includes(building.id),
-      };
-    });
+    setNodes((currentNodes) => {
+      // Preserve each node's current selected state rather than resetting it.
+      const selectedById = new Map(currentNodes.map((n) => [n.id, n.selected ?? false]));
 
-    setNodes(newNodes);
-  }, [
-    buildings,
-    baseId,
-    connectorMode,
-    connectionDrag,
-    selectedBuildingIds,
-    setNodes,
-  ]);
+      return buildings.map((building) => {
+        const pixelPos = gridToPixels(building.x, building.y);
+        const isConnectionSource = connectionDrag?.fromNodeId === building.id;
+        const isSelected = selectedById.get(building.id) ?? false;
+        return {
+          id: building.id,
+          type: "layoutBuilding",
+          position: pixelPos,
+          data: {
+            building,
+            baseId,
+            connectorMode,
+            isConnectionSource,
+            isConnectionTarget:
+              connectionDrag?.validTargetIds.includes(building.id) ?? false,
+            selected: isSelected,
+          },
+          draggable: !connectorMode,
+          selectable: true,
+          selected: isSelected,
+        };
+      });
+    });
+  }, [buildings, baseId, connectorMode, connectionDrag, setNodes]);
+
+  // Lightweight effect that patches only the nodes whose selection changed.
+  // Keeps data object references stable for unchanged nodes so React.memo works.
+  useEffect(() => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        const isSelected = selectedBuildingIds.includes(node.id);
+        if (node.selected === isSelected && (node.data as { selected?: boolean }).selected === isSelected) {
+          return node;
+        }
+        return {
+          ...node,
+          selected: isSelected,
+          data: { ...(node.data as object), selected: isSelected },
+        };
+      }),
+    );
+  }, [selectedBuildingIds, setNodes]);
 
   // Fit view only once on initial load when there are buildings
   useEffect(() => {
@@ -180,34 +197,55 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     }
   }, [buildings.length, fitView]);
 
-  // Convert layout connections to ReactFlow edges
+  // Convert layout connections to ReactFlow edges.
+  // Does NOT track selectedConnectionIds — selection is handled separately below.
   useEffect(() => {
-    const newEdges: Edge[] = connections.map((connection) => {
-      const rates = transferRates?.[connection.id];
-      const isSelected = selectedConnectionIds.includes(connection.id);
-      return {
-        id: connection.id,
-        source: connection.fromBuildingId,
-        target: connection.toBuildingId,
-        type: "layoutConnection",
-        selected: isSelected,
-        data: {
-          connection,
-          baseId,
-          transferRate: rates,
+    setEdges((currentEdges) => {
+      const selectedById = new Map(currentEdges.map((e) => [e.id, e.selected ?? false]));
+
+      return connections.map((connection) => {
+        const rates = transferRates?.[connection.id];
+        const isSelected = selectedById.get(connection.id) ?? false;
+        return {
+          id: connection.id,
+          source: connection.fromBuildingId,
+          target: connection.toBuildingId,
+          type: "layoutConnection",
           selected: isSelected,
-        },
-        style: {
-          stroke: "#888",
-          strokeWidth: 2,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
-      };
+          data: {
+            connection,
+            baseId,
+            transferRate: rates,
+            selected: isSelected,
+          },
+          style: {
+            stroke: "#888",
+            strokeWidth: 2,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+          },
+        };
+      });
     });
-    setEdges(newEdges);
-  }, [connections, baseId, transferRates, selectedConnectionIds, setEdges]);
+  }, [connections, baseId, transferRates, setEdges]);
+
+  // Lightweight effect that patches only the edges whose selection changed.
+  useEffect(() => {
+    setEdges((currentEdges) =>
+      currentEdges.map((edge) => {
+        const isSelected = selectedConnectionIds.includes(edge.id);
+        if (edge.selected === isSelected && (edge.data as { selected?: boolean })?.selected === isSelected) {
+          return edge;
+        }
+        return {
+          ...edge,
+          selected: isSelected,
+          data: { ...(edge.data as object), selected: isSelected },
+        };
+      }),
+    );
+  }, [selectedConnectionIds, setEdges]);
 
   // Handle node drag end - update building position
   const handleNodeDragStop = useCallback(

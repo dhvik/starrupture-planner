@@ -177,6 +177,7 @@ export interface EnergyGroup {
 export type RailTier = 1 | 2 | 3;
 export type LayoutBuildingType = "production" | "receiver" | "storage";
 export type BuildingViewMode = "edit" | "summary";
+export type BaseLayoutPointerMode = "select" | "pan";
 
 export interface BaseLayoutBuilding {
   id: string;
@@ -280,8 +281,11 @@ export interface AppState {
   basesList: Base[];
   energyGroups: EnergyGroup[];
   basesSelectedBaseId: string | null;
+  baseLayoutPointerMode: BaseLayoutPointerMode; // Active pointer tool for the layout canvas
   baseLayoutConnectorMode: RailTier | null; // Active connector mode for creating connections
+  baseLayoutSelectedBuildingIds: string[]; // Currently selected buildings in layout
   baseLayoutSelectedBuildingId: string | null; // Currently selected building in layout
+  baseLayoutSelectedConnectionIds: string[]; // Currently selected connections in layout
   baseLayoutSelectedConnectionId: string | null; // Currently selected connection in layout
   baseLayoutItemPaletteMode: "production" | "receiver"; // Item palette mode: production buildings or package receivers
   uiConfirmationDialog: ConfirmationDialog;
@@ -320,8 +324,11 @@ const appState: AppState = {
   plannerRecipeSelections: {},
   plannerTargetAmount: 60,
   basesSelectedBaseId: null,
+  baseLayoutPointerMode: "select",
   baseLayoutConnectorMode: null,
+  baseLayoutSelectedBuildingIds: [],
   baseLayoutSelectedBuildingId: null,
+  baseLayoutSelectedConnectionIds: [],
   baseLayoutSelectedConnectionId: null,
   baseLayoutItemPaletteMode: "production",
   uiConfirmationDialog: {

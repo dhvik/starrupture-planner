@@ -67,6 +67,14 @@ function normalizeEnergyGroupName(name: string): string {
   return name.trim().replace(/\s+/g, " ");
 }
 
+function areIdsEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((id, index) => id === right[index]);
+}
+
 function findEnergyGroupByName(
   groups: EnergyGroup[],
   name: string,
@@ -736,9 +744,14 @@ regEvent(
     if (draftDb.baseLayoutSelectedBuildingId === layoutBuildingId) {
       draftDb.baseLayoutSelectedBuildingId = null;
     }
+    draftDb.baseLayoutSelectedBuildingIds =
+      draftDb.baseLayoutSelectedBuildingIds.filter(
+        (buildingId: string) => buildingId !== layoutBuildingId,
+      );
 
     if (removedSelectedConnection) {
       draftDb.baseLayoutSelectedConnectionId = null;
+      draftDb.baseLayoutSelectedConnectionIds = [];
     }
 
     return [persistBasesEffect(draftDb as AppState)];
@@ -774,6 +787,68 @@ regEvent(
 
     building.x = newX;
     building.y = newY;
+
+    return [persistBasesEffect(draftDb as AppState)];
+  },
+);
+
+/** Move multiple buildings to new positions atomically */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_MOVE_BUILDINGS,
+  (
+    { draftDb },
+    baseId: string,
+    moves: Array<{ layoutBuildingId: string; newX: number; newY: number }>,
+  ) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout || moves.length === 0) return [];
+
+    const moveIds = new Set(moves.map((move) => move.layoutBuildingId));
+    const moveMap = new Map(
+      moves.map((move) => [move.layoutBuildingId, { x: move.newX, y: move.newY }]),
+    );
+
+    for (const move of moves) {
+      const building = base.layout.buildings.find(
+        (candidate) => candidate.id === move.layoutBuildingId,
+      );
+      if (!building) {
+        return [];
+      }
+    }
+
+    const targetPositions = new Set<string>();
+    for (const move of moves) {
+      const positionKey = `${move.newX},${move.newY}`;
+      if (targetPositions.has(positionKey)) {
+        console.warn("Multiple buildings cannot occupy the same position");
+        return [];
+      }
+      targetPositions.add(positionKey);
+    }
+
+    const occupiedByOtherBuildings = base.layout.buildings.some((building) => {
+      if (moveIds.has(building.id)) {
+        return false;
+      }
+
+      return targetPositions.has(`${building.x},${building.y}`);
+    });
+
+    if (occupiedByOtherBuildings) {
+      console.warn("Position already occupied");
+      return [];
+    }
+
+    base.layout.buildings.forEach((building) => {
+      const nextPosition = moveMap.get(building.id);
+      if (!nextPosition) {
+        return;
+      }
+
+      building.x = nextPosition.x;
+      building.y = nextPosition.y;
+    });
 
     return [persistBasesEffect(draftDb as AppState)];
   },
@@ -901,6 +976,13 @@ regEvent(
     base.layout.connections = base.layout.connections.filter(
       (c) => c.id !== connectionId,
     );
+    draftDb.baseLayoutSelectedConnectionIds =
+      draftDb.baseLayoutSelectedConnectionIds.filter(
+        (selectedId: string) => selectedId !== connectionId,
+      );
+    if (draftDb.baseLayoutSelectedConnectionId === connectionId) {
+      draftDb.baseLayoutSelectedConnectionId = null;
+    }
     return [persistBasesEffect(draftDb as AppState)];
   },
 );
@@ -936,6 +1018,14 @@ regEvent(
   },
 );
 
+/** Set the active pointer mode for the layout canvas */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_SET_POINTER_MODE,
+  ({ draftDb }, mode: "select" | "pan") => {
+    draftDb.baseLayoutPointerMode = mode;
+  },
+);
+
 /** Set connector mode for creating connections */
 regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE,
@@ -954,19 +1044,64 @@ regEvent(
 
 /** Set selected connection in layout */
 regEvent(
+  EVENT_IDS.BASES_LAYOUT_SET_SELECTION,
+  (
+    { draftDb },
+    buildingIds: string[] = [],
+    connectionIds: string[] = [],
+  ) => {
+    const nextSelectedBuildingId =
+      buildingIds.length === 1 && connectionIds.length === 0 ? buildingIds[0] : null;
+    const nextSelectedConnectionId =
+      connectionIds.length === 1 && buildingIds.length === 0 ? connectionIds[0] : null;
+
+    if (
+      areIdsEqual(draftDb.baseLayoutSelectedBuildingIds, buildingIds) &&
+      areIdsEqual(draftDb.baseLayoutSelectedConnectionIds, connectionIds) &&
+      draftDb.baseLayoutSelectedBuildingId === nextSelectedBuildingId &&
+      draftDb.baseLayoutSelectedConnectionId === nextSelectedConnectionId
+    ) {
+      return;
+    }
+
+    draftDb.baseLayoutSelectedBuildingIds = buildingIds;
+    draftDb.baseLayoutSelectedConnectionIds = connectionIds;
+    draftDb.baseLayoutSelectedBuildingId = nextSelectedBuildingId;
+    draftDb.baseLayoutSelectedConnectionId = nextSelectedConnectionId;
+  },
+);
+
+/** Set selected building in layout */
+regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING,
   ({ draftDb }, buildingId: string | null) => {
-    draftDb.baseLayoutSelectedBuildingId = buildingId;
-    if (buildingId) {
-      draftDb.baseLayoutSelectedConnectionId = null;
+    if (
+      draftDb.baseLayoutSelectedBuildingId === buildingId &&
+      areIdsEqual(
+        draftDb.baseLayoutSelectedBuildingIds,
+        buildingId ? [buildingId] : [],
+      ) &&
+      draftDb.baseLayoutSelectedConnectionIds.length === 0 &&
+      draftDb.baseLayoutSelectedConnectionId === null
+    ) {
+      return;
     }
+
+    draftDb.baseLayoutSelectedBuildingIds = buildingId ? [buildingId] : [];
+    draftDb.baseLayoutSelectedBuildingId = buildingId;
+    draftDb.baseLayoutSelectedConnectionIds = [];
+    draftDb.baseLayoutSelectedConnectionId = null;
   },
 );
 
 /** Delete the currently selected building */
 regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING, ({ draftDb }) => {
-  const buildingId = draftDb.baseLayoutSelectedBuildingId;
-  if (!buildingId) return;
+  const buildingIds = draftDb.baseLayoutSelectedBuildingIds.length
+    ? draftDb.baseLayoutSelectedBuildingIds
+    : draftDb.baseLayoutSelectedBuildingId
+      ? [draftDb.baseLayoutSelectedBuildingId]
+      : [];
+  if (buildingIds.length === 0) return;
 
   const selectedBaseId = draftDb.basesSelectedBaseId;
   if (!selectedBaseId) return;
@@ -974,24 +1109,29 @@ regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING, ({ draftDb }) => {
   const base = getBaseById(draftDb.basesList, selectedBaseId);
   if (!base || !base.layout) return;
 
+  const selectedBuildingIds = new Set(buildingIds);
+
   const removedSelectedConnection = base.layout.connections.some(
     (connection) =>
-      connection.id === draftDb.baseLayoutSelectedConnectionId &&
-      (connection.fromBuildingId === buildingId ||
-        connection.toBuildingId === buildingId),
+      draftDb.baseLayoutSelectedConnectionIds.includes(connection.id) ||
+      (connection.id === draftDb.baseLayoutSelectedConnectionId &&
+        (selectedBuildingIds.has(connection.fromBuildingId) ||
+          selectedBuildingIds.has(connection.toBuildingId))),
   );
 
   base.layout.buildings = base.layout.buildings.filter(
-    (building) => building.id !== buildingId,
+    (building) => !selectedBuildingIds.has(building.id),
   );
   base.layout.connections = base.layout.connections.filter(
     (connection) =>
-      connection.fromBuildingId !== buildingId &&
-      connection.toBuildingId !== buildingId,
+      !selectedBuildingIds.has(connection.fromBuildingId) &&
+      !selectedBuildingIds.has(connection.toBuildingId),
   );
 
+  draftDb.baseLayoutSelectedBuildingIds = [];
   draftDb.baseLayoutSelectedBuildingId = null;
   if (removedSelectedConnection) {
+    draftDb.baseLayoutSelectedConnectionIds = [];
     draftDb.baseLayoutSelectedConnectionId = null;
   }
 
@@ -1002,17 +1142,33 @@ regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING, ({ draftDb }) => {
 regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION,
   ({ draftDb }, connectionId: string | null) => {
-    draftDb.baseLayoutSelectedConnectionId = connectionId;
-    if (connectionId) {
-      draftDb.baseLayoutSelectedBuildingId = null;
+    if (
+      draftDb.baseLayoutSelectedConnectionId === connectionId &&
+      areIdsEqual(
+        draftDb.baseLayoutSelectedConnectionIds,
+        connectionId ? [connectionId] : [],
+      ) &&
+      draftDb.baseLayoutSelectedBuildingIds.length === 0 &&
+      draftDb.baseLayoutSelectedBuildingId === null
+    ) {
+      return;
     }
+
+    draftDb.baseLayoutSelectedBuildingIds = [];
+    draftDb.baseLayoutSelectedBuildingId = null;
+    draftDb.baseLayoutSelectedConnectionIds = connectionId ? [connectionId] : [];
+    draftDb.baseLayoutSelectedConnectionId = connectionId;
   },
 );
 
 /** Delete the currently selected connection */
 regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION, ({ draftDb }) => {
-  const connectionId = draftDb.baseLayoutSelectedConnectionId;
-  if (!connectionId) return;
+  const connectionIds = draftDb.baseLayoutSelectedConnectionIds.length
+    ? draftDb.baseLayoutSelectedConnectionIds
+    : draftDb.baseLayoutSelectedConnectionId
+      ? [draftDb.baseLayoutSelectedConnectionId]
+      : [];
+  if (connectionIds.length === 0) return;
 
   const selectedBaseId = draftDb.basesSelectedBaseId;
   if (!selectedBaseId) return;
@@ -1020,9 +1176,12 @@ regEvent(EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION, ({ draftDb }) => {
   const base = getBaseById(draftDb.basesList, selectedBaseId);
   if (!base || !base.layout) return;
 
+  const selectedConnectionIds = new Set(connectionIds);
+
   base.layout.connections = base.layout.connections.filter(
-    (c) => c.id !== connectionId,
+    (connection) => !selectedConnectionIds.has(connection.id),
   );
+  draftDb.baseLayoutSelectedConnectionIds = [];
   draftDb.baseLayoutSelectedConnectionId = null;
   return [persistBasesEffect(draftDb as AppState)];
 });

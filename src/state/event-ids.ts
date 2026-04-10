@@ -31,6 +31,7 @@ export const EVENT_IDS = {
   BASES_LAYOUT_ADD_BUILDING: "basesLayoutAddBuilding",
   BASES_LAYOUT_REMOVE_BUILDING: "basesLayoutRemoveBuilding",
   BASES_LAYOUT_MOVE_BUILDING: "basesLayoutMoveBuilding",
+  BASES_LAYOUT_MOVE_BUILDINGS: "bases_layout/move_buildings",
   BASES_LAYOUT_UPDATE_BUILDING_COUNT: "basesLayoutUpdateBuildingCount",
   BASES_LAYOUT_UPDATE_RECEIVER_OUTPUT_RATE:
     "bases_layout/update_receiver_output_rate",
@@ -38,7 +39,9 @@ export const EVENT_IDS = {
   BASES_LAYOUT_REMOVE_CONNECTION: "basesLayoutRemoveConnection",
   BASES_LAYOUT_UPDATE_CONNECTION_TIER: "basesLayoutUpdateConnectionTier",
   BASES_LAYOUT_SET_GRID_OFFSET: "basesLayoutSetGridOffset",
+  BASES_LAYOUT_SET_POINTER_MODE: "bases_layout/set_pointer_mode",
   BASES_LAYOUT_SET_CONNECTOR_MODE: "basesLayoutSetConnectorMode",
+  BASES_LAYOUT_SET_SELECTION: "bases_layout/set_selection",
   BASES_LAYOUT_SET_SELECTED_BUILDING: "bases_layout/set_selected_building",
   BASES_LAYOUT_DELETE_SELECTED_BUILDING: "bases_layout/delete_selected_building",
   BASES_LAYOUT_SET_SELECTED_CONNECTION: "bases_layout/set_selected_connection",

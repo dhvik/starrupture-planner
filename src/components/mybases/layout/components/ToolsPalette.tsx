@@ -1,7 +1,7 @@
 import { useSubscription, dispatch } from "@flexsurfer/reflex";
 import { SUB_IDS } from "../../../../state/sub-ids";
 import { EVENT_IDS } from "../../../../state/event-ids";
-import type { RailTier } from "../../../../state/db";
+import type { BaseLayoutPointerMode, RailTier } from "../../../../state/db";
 
 interface ToolsPaletteProps {
   className?: string;
@@ -18,14 +18,17 @@ const railTierInfo: Array<{
 ];
 
 const ToolsPalette = ({ className }: ToolsPaletteProps) => {
+  const pointerMode = useSubscription<BaseLayoutPointerMode>([
+    SUB_IDS.BASES_LAYOUT_POINTER_MODE,
+  ]);
   const connectorMode = useSubscription<RailTier | null>([
     SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
   ]);
-  const selectedBuildingId = useSubscription<string | null>([
-    SUB_IDS.BASES_LAYOUT_SELECTED_BUILDING_ID,
+  const selectedBuildingIds = useSubscription<string[]>([
+    SUB_IDS.BASES_LAYOUT_SELECTED_BUILDING_IDS,
   ]);
-  const selectedConnectionId = useSubscription<string | null>([
-    SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_ID,
+  const selectedConnectionIds = useSubscription<string[]>([
+    SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_IDS,
   ]);
   const selectedBaseId = useSubscription<string | null>([
     SUB_IDS.BASES_SELECTED_BASE_ID,
@@ -35,18 +38,24 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, tier]);
   };
 
+  const handleSetPointerMode = (mode: BaseLayoutPointerMode) => {
+    dispatch([EVENT_IDS.BASES_LAYOUT_SET_POINTER_MODE, mode]);
+    dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, null]);
+  };
+
   const handleDeleteSelected = () => {
-    if (selectedBuildingId) {
+    if (selectedBuildingIds.length > 0) {
       dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING]);
       return;
     }
 
-    if (selectedConnectionId) {
+    if (selectedConnectionIds.length > 0) {
       dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_CONNECTION]);
     }
   };
 
-  const hasSelection = Boolean(selectedBuildingId || selectedConnectionId);
+  const hasSelection =
+    selectedBuildingIds.length > 0 || selectedConnectionIds.length > 0;
 
   const handleSetEditMode = () => {
     if (selectedBaseId) {
@@ -82,9 +91,9 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
       <div className="p-3 flex flex-wrap gap-2">
         {/* Select Tool */}
         <button
-          onClick={() => handleSelectTool(null)}
-          className={toolBtnClass(!connectorMode)}
-          title="Select — Place & move buildings"
+          onClick={() => handleSetPointerMode("select")}
+          className={toolBtnClass(pointerMode === "select" && !connectorMode)}
+          title="Select — Click items or drag a selection rectangle"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -93,6 +102,33 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
             fill="currentColor"
           >
             <path d="M4 2l12 9.5-5.1 1.2L15.5 22l-3.1 1.3L7.8 14 4 18V2z" />
+          </svg>
+        </button>
+
+        {/* Pan Tool */}
+        <button
+          onClick={() => handleSetPointerMode("pan")}
+          className={toolBtnClass(pointerMode === "pan" && !connectorMode)}
+          title="Pan — Drag the background to move around"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 2v7" />
+            <path d="m15 6-3-4-3 4" />
+            <path d="M12 22v-7" />
+            <path d="m9 18 3 4 3-4" />
+            <path d="M2 12h7" />
+            <path d="m6 15-4-3 4-3" />
+            <path d="M22 12h-7" />
+            <path d="m18 9 4 3-4 3" />
           </svg>
         </button>
 
@@ -118,10 +154,10 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
           disabled={!hasSelection}
           className={toolBtnClass(false, !hasSelection)}
           title={
-            selectedBuildingId
-              ? "Delete selected building"
-              : selectedConnectionId
-                ? "Delete selected connection"
+            selectedBuildingIds.length > 0
+              ? "Delete selected buildings"
+              : selectedConnectionIds.length > 0
+                ? "Delete selected connections"
                 : "Select a building or connection first"
           }
         >

@@ -165,15 +165,22 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       const sourceBuilding = buildings.find((b) => b.id === connection.source);
       if (!sourceBuilding) return;
 
-      // Get building definition and recipe
-      const buildingDef = buildingsById[sourceBuilding.buildingId];
-      if (!buildingDef || !buildingDef.recipes) return;
+      let itemId: string;
 
-      const recipe = buildingDef.recipes[sourceBuilding.recipeIndex];
-      if (!recipe) return;
+      // Handle package receivers differently - they don't have recipes
+      if (sourceBuilding.buildingType === "receiver") {
+        itemId = sourceBuilding.itemId;
+      } else {
+        // Get building definition and recipe for production buildings
+        const buildingDef = buildingsById[sourceBuilding.buildingId];
+        if (!buildingDef || !buildingDef.recipes) return;
 
-      // The item being transferred is the output of the source building
-      const itemId = recipe.output.id;
+        const recipe = buildingDef.recipes[sourceBuilding.recipeIndex];
+        if (!recipe) return;
+
+        // The item being transferred is the output of the source building
+        itemId = recipe.output.id;
+      }
 
       // Use connector mode rail tier, default to tier 1
       const railTier: RailTier = connectorMode ?? 1;

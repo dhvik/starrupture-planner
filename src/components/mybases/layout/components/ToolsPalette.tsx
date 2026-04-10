@@ -3,7 +3,7 @@ import { SUB_IDS } from "../../../../state/sub-ids";
 import { EVENT_IDS } from "../../../../state/event-ids";
 import type { RailTier } from "../../../../state/db";
 
-interface ConnectorPaletteProps {
+interface ToolsPaletteProps {
   className?: string;
 }
 
@@ -17,7 +17,7 @@ const railTierInfo: Array<{
   { tier: 3, name: "Tier 3 Rail", capacity: 480 },
 ];
 
-const ConnectorPalette = ({ className }: ConnectorPaletteProps) => {
+const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const connectorMode = useSubscription<RailTier | null>([
     SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
   ]);
@@ -112,4 +112,4 @@ const ConnectorPalette = ({ className }: ConnectorPaletteProps) => {
   );
 };
 
-export default ConnectorPalette;
+export default ToolsPalette;

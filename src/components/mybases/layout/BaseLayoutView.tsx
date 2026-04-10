@@ -1,27 +1,39 @@
-import { useSubscription, dispatch } from '@flexsurfer/reflex';
-import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
-import { SUB_IDS } from '../../../state/sub-ids';
-import { EVENT_IDS } from '../../../state/event-ids';
-import type { Base } from '../../../state/db';
-import { GRID_CELL_SIZE } from './utils/gridUtils';
-import LayoutCanvas from './components/LayoutCanvas';
-import ItemPalette from './components/ItemPalette';
-import ConnectorPalette from './components/ConnectorPalette';
-import BaseLayoutBalanceSummary from './components/BaseLayoutBalanceSummary';
+import { useSubscription, dispatch } from "@flexsurfer/reflex";
+import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { SUB_IDS } from "../../../state/sub-ids";
+import { EVENT_IDS } from "../../../state/event-ids";
+import type { Base } from "../../../state/db";
+import { GRID_CELL_SIZE } from "./utils/gridUtils";
+import LayoutCanvas from "./components/LayoutCanvas";
+import ItemPalette from "./components/ItemPalette";
+import ToolsPalette from "./components/ToolsPalette";
+import BaseLayoutBalanceSummary from "./components/BaseLayoutBalanceSummary";
 
 interface BaseLayoutViewProps {
   onBack?: () => void;
 }
 
 // Inner component that has access to ReactFlow context
-const BaseLayoutContent = ({ selectedBaseId, selectedBase, onBack }: { selectedBaseId: string; selectedBase: Base; onBack?: () => void }) => {
+const BaseLayoutContent = ({
+  selectedBaseId,
+  selectedBase,
+  onBack,
+}: {
+  selectedBaseId: string;
+  selectedBase: Base;
+  onBack?: () => void;
+}) => {
   const { getViewport } = useReactFlow();
 
   const getViewportCenter = () => {
     const viewport = getViewport();
     // Calculate the center of the viewport in grid coordinates
-    const centerX = Math.round((-viewport.x + window.innerWidth / 2) / viewport.zoom / GRID_CELL_SIZE);
-    const centerY = Math.round((-viewport.y + window.innerHeight / 2) / viewport.zoom / GRID_CELL_SIZE);
+    const centerX = Math.round(
+      (-viewport.x + window.innerWidth / 2) / viewport.zoom / GRID_CELL_SIZE,
+    );
+    const centerY = Math.round(
+      (-viewport.y + window.innerHeight / 2) / viewport.zoom / GRID_CELL_SIZE,
+    );
     return { x: centerX, y: centerY };
   };
 
@@ -46,8 +58,8 @@ const BaseLayoutContent = ({ selectedBaseId, selectedBase, onBack }: { selectedB
           <h3 className="text-lg font-bold">{selectedBase.name} - Layout</h3>
         </div>
         <div className="text-sm text-base-content/70">
-          Buildings: {selectedBase.layout?.buildings.length || 0} | 
-          Connections: {selectedBase.layout?.connections.length || 0}
+          Buildings: {selectedBase.layout?.buildings.length || 0} | Connections:{" "}
+          {selectedBase.layout?.connections.length || 0}
         </div>
       </div>
 
@@ -62,16 +74,23 @@ const BaseLayoutContent = ({ selectedBaseId, selectedBase, onBack }: { selectedB
         <div className="w-96 bg-base-200 border-l border-base-300 flex flex-col overflow-hidden">
           {/* Connector Palette - Fixed height */}
           <div className="border-b border-base-300 flex-shrink-0">
-            <ConnectorPalette />
+            <ToolsPalette />
           </div>
 
           {/* Item Palette - Flexible */}
           <div className="flex-1 flex flex-col overflow-hidden border-b border-base-300">
-            <ItemPalette baseId={selectedBaseId} className="h-full" getViewportCenter={getViewportCenter} />
+            <ItemPalette
+              baseId={selectedBaseId}
+              className="h-full"
+              getViewportCenter={getViewportCenter}
+            />
           </div>
 
           {/* Balance Summary - Fixed height */}
-          <div className="p-4 overflow-y-auto flex-shrink-0" style={{ maxHeight: '40%' }}>
+          <div
+            className="p-4 overflow-y-auto flex-shrink-0"
+            style={{ maxHeight: "40%" }}
+          >
             <h4 className="font-bold text-sm mb-3">Production Balance</h4>
             <BaseLayoutBalanceSummary baseId={selectedBaseId} />
           </div>
@@ -82,8 +101,12 @@ const BaseLayoutContent = ({ selectedBaseId, selectedBase, onBack }: { selectedB
 };
 
 const BaseLayoutView = ({ onBack }: BaseLayoutViewProps = {}) => {
-  const selectedBaseId = useSubscription<string | null>([SUB_IDS.BASES_SELECTED_BASE_ID]);
-  const selectedBase = useSubscription<Base | null>([SUB_IDS.BASES_SELECTED_BASE]);
+  const selectedBaseId = useSubscription<string | null>([
+    SUB_IDS.BASES_SELECTED_BASE_ID,
+  ]);
+  const selectedBase = useSubscription<Base | null>([
+    SUB_IDS.BASES_SELECTED_BASE,
+  ]);
 
   // Initialize layout if it doesn't exist
   const initializeLayout = () => {
@@ -110,10 +133,7 @@ const BaseLayoutView = ({ onBack }: BaseLayoutViewProps = {}) => {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-base-content/70 mb-4">Layout not initialized</p>
-          <button
-            className="btn btn-primary"
-            onClick={initializeLayout}
-          >
+          <button className="btn btn-primary" onClick={initializeLayout}>
             Initialize Layout
           </button>
         </div>
@@ -124,7 +144,11 @@ const BaseLayoutView = ({ onBack }: BaseLayoutViewProps = {}) => {
   return (
     <div className="h-full flex flex-col">
       <ReactFlowProvider>
-        <BaseLayoutContent selectedBaseId={selectedBaseId} selectedBase={selectedBase} onBack={onBack} />
+        <BaseLayoutContent
+          selectedBaseId={selectedBaseId}
+          selectedBase={selectedBase}
+          onBack={onBack}
+        />
       </ReactFlowProvider>
     </div>
   );

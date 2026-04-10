@@ -38,7 +38,18 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     SUB_IDS.BASES_SELECTED_BASE_ID,
   ]);
 
-  const handleSelectTool = (tier: RailTier | null) => {
+  const handleSelectTool = (tier: RailTier) => {
+    if (selectedConnectionIds.length > 0 && selectedBaseId) {
+      for (const connectionId of selectedConnectionIds) {
+        dispatch([
+          EVENT_IDS.BASES_LAYOUT_UPDATE_CONNECTION_TIER,
+          selectedBaseId,
+          connectionId,
+          tier,
+        ]);
+      }
+      return;
+    }
     dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, tier]);
   };
 
@@ -152,7 +163,11 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
               key={tier}
               onClick={() => handleSelectTool(tier)}
               className={toolBtnClass(isActive)}
-              title={`${name} — ${capacity}/min capacity`}
+              title={
+            selectedConnectionIds.length > 0
+              ? `Convert selected connection(s) to ${name} (${capacity}/min)`
+              : `${name} — ${capacity}/min capacity`
+          }
             >
               <span className="text-sm font-bold leading-none">{chevrons}</span>
             </button>

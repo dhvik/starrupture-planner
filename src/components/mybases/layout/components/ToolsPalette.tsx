@@ -13,14 +13,32 @@ interface ToolsPaletteProps {
   className?: string;
 }
 
-const railTierInfo: Array<{
+interface RailTierInfo {
   tier: RailTier;
   name: string;
   capacity: number;
-}> = [
-  { tier: 1, name: "Tier 1 Rail", capacity: 120 },
-  { tier: 2, name: "Tier 2 Rail", capacity: 240 },
-  { tier: 3, name: "Tier 3 Rail", capacity: 480 },
+  icon: React.ReactNode;
+}
+
+const railTiers: RailTierInfo[] = [
+  {
+    tier: 1,
+    name: "Tier 1 Rail",
+    capacity: 120,
+    icon: <span className="text-sm font-bold leading-none">&gt;</span>,
+  },
+  {
+    tier: 2,
+    name: "Tier 2 Rail",
+    capacity: 240,
+    icon: <span className="text-sm font-bold leading-none">&gt;&gt;</span>,
+  },
+  {
+    tier: 3,
+    name: "Tier 3 Rail",
+    capacity: 480,
+    icon: <span className="text-sm font-bold leading-none">&gt;&gt;&gt;</span>,
+  },
 ];
 
 interface DistributionModeInfo {
@@ -114,6 +132,9 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const selectedBaseId = useSubscription<string | null>([
     SUB_IDS.BASES_SELECTED_BASE_ID,
   ]);
+  const selectedRailTier = useSubscription<RailTier>([
+    SUB_IDS.BASES_LAYOUT_SELECTED_RAIL_TIER,
+  ]);
   const buildings = useSubscription<BaseLayoutBuilding[]>([
     SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID,
     selectedBaseId,
@@ -128,7 +149,10 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     useState(false);
   const distributionDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close the dropdown when the user clicks outside of it.
+  const [railDropdownOpen, setRailDropdownOpen] = useState(false);
+  const railDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when the user clicks outside of them.
   useEffect(() => {
     if (!distributionDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -143,8 +167,26 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [distributionDropdownOpen]);
 
-  const handleSelectTool = (tier: RailTier) => {
+  useEffect(() => {
+    if (!railDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        railDropdownRef.current &&
+        !railDropdownRef.current.contains(e.target as Node)
+      ) {
+        setRailDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [railDropdownOpen]);
+
+  const handleSelectRailTier = (tier: RailTier) => {
+    setRailDropdownOpen(false);
+    // Always persist the chosen tier so drag connections use it.
+    dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_RAIL_TIER, tier]);
     if (selectedConnectionIds.length > 0 && selectedBaseId) {
+      // Convert selected connections instead of entering connector mode.
       for (const connectionId of selectedConnectionIds) {
         dispatch([
           EVENT_IDS.BASES_LAYOUT_UPDATE_CONNECTION_TIER,
@@ -264,25 +306,74 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
           </svg>
         </button>
 
-        {/* Rail Tier Tools */}
-        {railTierInfo.map(({ tier, name, capacity }) => {
-          const isActive = connectorMode === tier;
-          const chevrons = ">".repeat(tier);
-          return (
-            <button
-              key={tier}
-              onClick={() => handleSelectTool(tier)}
-              className={toolBtnClass(isActive)}
-              title={
-                selectedConnectionIds.length > 0
-                  ? `Convert selected connection(s) to ${name} (${capacity}/min)`
-                  : `${name} — ${capacity}/min capacity`
-              }
+        {/* Rail Tier Dropdown */}
+        <div className="relative" ref={railDropdownRef}>
+          <button
+            onClick={() => setRailDropdownOpen((o) => !o)}
+            className={`${toolBtnClass(connectorMode !== null || railDropdownOpen)} flex items-center gap-1 !w-auto px-2`}
+            title={
+              selectedConnectionIds.length > 0
+                ? `Convert selected connection(s) — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
+                : `Rail tier — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
+            }
+          >
+            {railTiers.find((r) => r.tier === selectedRailTier)?.icon}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-3 h-3 transition-transform ${railDropdownOpen ? "rotate-180" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <span className="text-sm font-bold leading-none">{chevrons}</span>
-            </button>
-          );
-        })}
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {railDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[160px]">
+              {railTiers.map(({ tier, name, capacity, icon }) => {
+                const isSelected = tier === selectedRailTier;
+                return (
+                  <button
+                    key={tier}
+                    onClick={() => handleSelectRailTier(tier)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
+                      isSelected
+                        ? "bg-primary/20 text-primary font-semibold"
+                        : "hover:bg-base-300 opacity-80 hover:opacity-100"
+                    }`}
+                    title={
+                      selectedConnectionIds.length > 0
+                        ? `Convert selected connection(s) to ${name} (${capacity}/min)`
+                        : `${name} — ${capacity}/min capacity`
+                    }
+                  >
+                    {icon}
+                    <span>{name}</span>
+                    <span className="text-xs opacity-60 ml-auto">{capacity}/min</span>
+                    {isSelected && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3.5 h-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Delete Tool */}
         <button

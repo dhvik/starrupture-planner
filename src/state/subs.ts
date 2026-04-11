@@ -96,6 +96,7 @@ regSub(SUB_IDS.BASES_LIST, "basesList");
 regSub(SUB_IDS.BASES_SELECTED_BASE_ID, "basesSelectedBaseId");
 regSub(SUB_IDS.BASES_LAYOUT_POINTER_MODE, "baseLayoutPointerMode");
 regSub(SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE, "baseLayoutConnectorMode");
+regSub(SUB_IDS.BASES_LAYOUT_SELECTED_RAIL_TIER, "baseLayoutSelectedRailTier");
 regSub(
   SUB_IDS.BASES_LAYOUT_SELECTED_BUILDING_IDS,
   "baseLayoutSelectedBuildingIds",

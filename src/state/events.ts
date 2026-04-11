@@ -1087,6 +1087,14 @@ regEvent(
   },
 );
 
+/** Persist the user's preferred rail tier for new connections */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_SET_SELECTED_RAIL_TIER,
+  ({ draftDb }, railTier: RailTier) => {
+    draftDb.baseLayoutSelectedRailTier = railTier;
+  },
+);
+
 /** Set item palette mode (production or receiver) */
 regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_ITEM_PALETTE_MODE,

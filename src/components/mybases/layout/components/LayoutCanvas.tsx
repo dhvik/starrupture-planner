@@ -102,6 +102,9 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const connectorMode = useSubscription<RailTier | null>([
     SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
   ]);
+  const selectedRailTier = useSubscription<RailTier>([
+    SUB_IDS.BASES_LAYOUT_SELECTED_RAIL_TIER,
+  ]);
   const transferRates = useSubscription<Record<string, ConnectionTransferRate>>(
     [SUB_IDS.BASES_LAYOUT_CONNECTION_TRANSFER_RATES, baseId],
   );
@@ -365,7 +368,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         sourceBuilding,
         targetBuilding,
         itemId,
-        connectorMode ?? 1,
+        connectorMode ?? selectedRailTier,
         buildingsById,
         connections,
       );
@@ -419,8 +422,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         return;
       }
 
-      // Use connector mode rail tier, default to tier 1
-      const railTier: RailTier = connectorMode ?? 1;
+      // Use connector mode rail tier; fall back to the user's persisted selection
+      const railTier: RailTier = connectorMode ?? selectedRailTier;
       didCompleteConnection.current = true;
 
       // Dispatch add connection event

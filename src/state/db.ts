@@ -285,6 +285,7 @@ export interface AppState {
   basesSelectedBaseId: string | null;
   baseLayoutPointerMode: BaseLayoutPointerMode; // Active pointer tool for the layout canvas
   baseLayoutConnectorMode: RailTier | null; // Active connector mode for creating connections
+  baseLayoutSelectedRailTier: RailTier; // Persisted rail tier used for new connections
   baseLayoutSelectedBuildingIds: string[]; // Currently selected buildings in layout
   baseLayoutSelectedBuildingId: string | null; // Currently selected building in layout
   baseLayoutSelectedConnectionIds: string[]; // Currently selected connections in layout
@@ -328,6 +329,7 @@ const appState: AppState = {
   basesSelectedBaseId: null,
   baseLayoutPointerMode: "pan",
   baseLayoutConnectorMode: null,
+  baseLayoutSelectedRailTier: 1,
   baseLayoutSelectedBuildingIds: [],
   baseLayoutSelectedBuildingId: null,
   baseLayoutSelectedConnectionIds: [],

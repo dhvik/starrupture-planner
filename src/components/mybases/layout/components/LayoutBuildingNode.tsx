@@ -168,7 +168,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     if (e.key === "Enter") {
       e.currentTarget.blur();
     } else if (e.key === "Tab") {
-      // Prevent the default tab-to-next-focusable behaviour and instead land
+      // Prevent the default tab-to-next-focusable behavior and instead land
       // focus on the parent ReactFlow node so the user stays in context.
       e.preventDefault();
       const rfNode = e.currentTarget.closest(".react-flow__node") as HTMLElement | null;

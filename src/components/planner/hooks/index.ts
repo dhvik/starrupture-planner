@@ -36,7 +36,7 @@ export const usePlannerDefaultOutput = () => {
  */
 export const useTargetAmount = () => {
     const targetAmount = useSubscription<number>([SUB_IDS.PLANNER_TARGET_AMOUNT]);
-    const timeoutRef = useRef<number | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const setTargetAmount = useCallback((amount: number) => {
         // Clear existing timeout

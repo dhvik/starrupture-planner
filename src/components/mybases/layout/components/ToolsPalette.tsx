@@ -41,6 +41,56 @@ const railTiers: RailTierInfo[] = [
   },
 ];
 
+interface BuildingModeInfo {
+  mode: "edit" | "summary";
+  label: string;
+  title: string;
+  icon: React.ReactNode;
+}
+
+const buildingModes: BuildingModeInfo[] = [
+  {
+    mode: "edit",
+    label: "Edit",
+    title: "Edit — buildings show full controls",
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-5 h-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+        <path d="m15 5 4 4" />
+      </svg>
+    ),
+  },
+  {
+    mode: "summary",
+    label: "Summary",
+    title: "Summary — buildings show compact read-only view",
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-5 h-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+  },
+];
+
 interface DistributionModeInfo {
   mode: DistributionMode;
   label: string;
@@ -140,10 +190,16 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     selectedBaseId,
   ]);
 
-  // Derive the active distribution mode from the first building in the layout.
-  // Falls back to "first-served" when the layout is empty or not yet loaded.
+  // Derive active modes from the first building; fall back to defaults when the
+  // layout is empty or not yet loaded.
+  const activeBuildingMode: "edit" | "summary" =
+    buildings?.[0]?.mode ?? "edit";
   const activeDistributionMode: DistributionMode =
     buildings?.[0]?.distributionMode ?? "first-served";
+
+  const [buildingModeDropdownOpen, setBuildingModeDropdownOpen] =
+    useState(false);
+  const buildingModeDropdownRef = useRef<HTMLDivElement>(null);
 
   const [distributionDropdownOpen, setDistributionDropdownOpen] =
     useState(false);
@@ -152,7 +208,17 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const [railDropdownOpen, setRailDropdownOpen] = useState(false);
   const railDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns when the user clicks outside of them.
+  // Close each dropdown when the user clicks outside of it.
+  useEffect(() => {
+    if (!buildingModeDropdownOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (!buildingModeDropdownRef.current?.contains(e.target as Node))
+        setBuildingModeDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [buildingModeDropdownOpen]);
+
   useEffect(() => {
     if (!distributionDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -219,22 +285,13 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const hasSelection =
     selectedBuildingIds.length > 0 || selectedConnectionIds.length > 0;
 
-  const handleSetEditMode = () => {
+  const handleSelectBuildingMode = (mode: "edit" | "summary") => {
+    setBuildingModeDropdownOpen(false);
     if (selectedBaseId) {
       dispatch([
         EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,
         selectedBaseId,
-        "edit",
-      ]);
-    }
-  };
-
-  const handleSetSummaryMode = () => {
-    if (selectedBaseId) {
-      dispatch([
-        EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,
-        selectedBaseId,
-        "summary",
+        mode,
       ]);
     }
   };
@@ -409,49 +466,66 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
         {/* Divider */}
         <div className="w-px h-8 bg-base-300 self-center" />
 
-        {/* Edit Mode Button */}
-        <button
-          onClick={handleSetEditMode}
-          disabled={!selectedBaseId}
-          className={toolBtnClass(false, !selectedBaseId)}
-          title="Set all buildings to Edit mode"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {/* Building Mode Dropdown */}
+        <div className="relative" ref={buildingModeDropdownRef}>
+          <button
+            onClick={() => setBuildingModeDropdownOpen((o) => !o)}
+            disabled={!selectedBaseId}
+            className={`${toolBtnClass(buildingModeDropdownOpen, !selectedBaseId)} flex items-center gap-1 !w-auto px-2`}
+            title={`Building mode: ${buildingModes.find((m) => m.mode === activeBuildingMode)?.label} — click to change`}
           >
-            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-            <path d="m15 5 4 4" />
-          </svg>
-        </button>
+            {buildingModes.find((m) => m.mode === activeBuildingMode)?.icon}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-3 h-3 transition-transform ${buildingModeDropdownOpen ? "rotate-180" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
 
-        {/* Summary/Lock Mode Button */}
-        <button
-          onClick={handleSetSummaryMode}
-          disabled={!selectedBaseId}
-          className={toolBtnClass(false, !selectedBaseId)}
-          title="Set all buildings to Summary mode"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        </button>
+          {buildingModeDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[160px]">
+              {buildingModes.map((info) => {
+                const isSelected = info.mode === activeBuildingMode;
+                return (
+                  <button
+                    key={info.mode}
+                    onClick={() => handleSelectBuildingMode(info.mode)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
+                      isSelected
+                        ? "bg-primary/20 text-primary font-semibold"
+                        : "hover:bg-base-300 opacity-80 hover:opacity-100"
+                    }`}
+                    title={info.title}
+                  >
+                    {info.icon}
+                    <span>{info.label}</span>
+                    {isSelected && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3.5 h-3.5 ml-auto shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Divider */}
         <div className="w-px h-8 bg-base-300 self-center" />

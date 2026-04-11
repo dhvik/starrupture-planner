@@ -618,15 +618,18 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
-      // Ignore selection events while in connector mode.
-      if (connectorMode) return;
+      // Only handle ctrl+click and ctrl+drag box-selection events.
+      //
+      // Regular clicks and programmatic selections (e.g. balance table row click)
+      // happen without Ctrl held, so this gate blocks them. Without the gate,
+      // programmatic setNodes/setEdges calls trigger onSelectionChange before both
+      // effects have finished, causing an intermediate dispatch that clears the
+      // connection selection and starts a flicker loop.
+      if (connectorMode || !isCtrlHeld) return;
 
       const nextSelectedNodeIds = selectedNodes.map((node) => node.id);
       const nextSelectedEdgeIds = selectedEdges.map((edge) => edge.id);
 
-      // Bail out when ReactFlow's reported selection already matches Reflex state.
-      // This breaks the loop where our own setNodes/setEdges calls (from the
-      // selection effects) trigger onSelectionChange with the same values we just set.
       if (
         areSelectedIdsEqual(nextSelectedNodeIds, selectedBuildingIds) &&
         areSelectedIdsEqual(nextSelectedEdgeIds, selectedConnectionIds)
@@ -640,7 +643,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         nextSelectedEdgeIds,
       ]);
     },
-    [connectorMode, selectedBuildingIds, selectedConnectionIds],
+    [connectorMode, isCtrlHeld, selectedBuildingIds, selectedConnectionIds],
   );
 
   // Handle pane click - cancel connection drag and clear selections

@@ -146,13 +146,16 @@ const BaseLayoutBalanceSummary = ({
                     </div>
                   </td>
                   <td className="text-right">
-                    {item.totalProduction.toFixed(1)}/
-                    {item.totalDemand.toFixed(1)}
-                    <span className={`font-bold ${balanceClass}`}>
-                      {" "}
-                      {balanceValue > 0 && "+"}
-                      {balanceValue.toFixed(1)}/min
-                    </span>
+                    <div className="flex flex-col items-end leading-tight">
+                      <span>
+                        {item.totalProduction.toFixed(1)}/
+                        {item.totalDemand.toFixed(1)}
+                      </span>
+                      <span className={`font-bold ${balanceClass}`}>
+                        {balanceValue > 0 && "+"}
+                        {balanceValue.toFixed(1)}/min
+                      </span>
+                    </div>
                   </td>
                 </tr>
               );

@@ -4,7 +4,6 @@ import { SUB_IDS } from "../../../../state/sub-ids";
 import { EVENT_IDS } from "../../../../state/event-ids";
 import type {
   BaseLayoutBuilding,
-  BaseLayoutPointerMode,
   DistributionMode,
   RailTier,
 } from "../../../../state/db";
@@ -12,54 +11,6 @@ import type {
 interface ToolsPaletteProps {
   className?: string;
 }
-
-interface PointerModeInfo {
-  mode: BaseLayoutPointerMode;
-  label: string;
-  title: string;
-  icon: React.ReactNode;
-}
-
-const pointerModes: PointerModeInfo[] = [
-  {
-    mode: "select",
-    label: "Select",
-    title: "Select — click items or drag a selection rectangle",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-      >
-        <path d="M4 2l12 9.5-5.1 1.2L15.5 22l-3.1 1.3L7.8 14 4 18V2z" />
-      </svg>
-    ),
-  },
-  {
-    mode: "pan",
-    label: "Pan",
-    title: "Pan — drag the background to move around",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M8 11V5a1 1 0 1 1 2 0v5" />
-        <path d="M12 11V4a1 1 0 1 1 2 0v7" />
-        <path d="M16 11V6a1 1 0 1 1 2 0v8" />
-        <path d="M6 12.5V10a1 1 0 1 1 2 0v4" />
-        <path d="M18 12v-1a1 1 0 1 1 2 0v4.5c0 1.7-.7 3.4-1.9 4.7L17 21H9.5a3.5 3.5 0 0 1-2.8-1.4l-2.5-3.3a1 1 0 0 1 1.6-1.2L8 17" />
-      </svg>
-    ),
-  },
-];
 
 interface RailTierInfo {
   tier: RailTier;
@@ -215,9 +166,6 @@ const distributionModes: DistributionModeInfo[] = [
 ];
 
 const ToolsPalette = ({ className }: ToolsPaletteProps) => {
-  const pointerMode = useSubscription<BaseLayoutPointerMode>([
-    SUB_IDS.BASES_LAYOUT_POINTER_MODE,
-  ]);
   const connectorMode = useSubscription<RailTier | null>([
     SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
   ]);
@@ -245,10 +193,6 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const activeDistributionMode: DistributionMode =
     buildings?.[0]?.distributionMode ?? "first-served";
 
-  const [pointerModeDropdownOpen, setPointerModeDropdownOpen] =
-    useState(false);
-  const pointerModeDropdownRef = useRef<HTMLDivElement>(null);
-
   const [buildingModeDropdownOpen, setBuildingModeDropdownOpen] =
     useState(false);
   const buildingModeDropdownRef = useRef<HTMLDivElement>(null);
@@ -261,16 +205,6 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const railDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close each dropdown when the user clicks outside of it.
-  useEffect(() => {
-    if (!pointerModeDropdownOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (!pointerModeDropdownRef.current?.contains(e.target as Node))
-        setPointerModeDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [pointerModeDropdownOpen]);
-
   useEffect(() => {
     if (!buildingModeDropdownOpen) return;
     const onMouseDown = (e: MouseEvent) => {
@@ -328,12 +262,6 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, tier]);
   };
 
-  const handleSetPointerMode = (mode: BaseLayoutPointerMode) => {
-    setPointerModeDropdownOpen(false);
-    dispatch([EVENT_IDS.BASES_LAYOUT_SET_POINTER_MODE, mode]);
-    dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, null]);
-  };
-
   const handleDeleteSelected = () => {
     if (selectedBuildingIds.length > 0) {
       dispatch([EVENT_IDS.BASES_LAYOUT_DELETE_SELECTED_BUILDING]);
@@ -386,65 +314,21 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   return (
     <div className={`flex flex-col ${className}`}>
       <div className="flex flex-wrap gap-2 items-center">
-        {/* Pointer Mode Dropdown */}
-        <div className="relative" ref={pointerModeDropdownRef}>
-          <button
-            onClick={() => setPointerModeDropdownOpen((o) => !o)}
-            className={`${toolBtnClass(!connectorMode || pointerModeDropdownOpen)} flex items-center gap-1 !w-auto px-2`}
-            title={`Pointer mode: ${pointerModes.find((m) => m.mode === pointerMode)?.label} — click to change`}
+        {/* Select mode indicator — pan is always the default drag; Ctrl+drag box-selects */}
+        <button
+          className={toolBtnClass(!connectorMode)}
+          title="Select mode — drag to pan · Ctrl+drag to box-select · click to select items"
+          onClick={() => dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, null])}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
           >
-            {pointerModes.find((m) => m.mode === pointerMode)?.icon}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`w-3 h-3 transition-transform ${pointerModeDropdownOpen ? "rotate-180" : ""}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-
-          {pointerModeDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[140px]">
-              {pointerModes.map((info) => {
-                const isSelected = info.mode === pointerMode && !connectorMode;
-                return (
-                  <button
-                    key={info.mode}
-                    onClick={() => handleSetPointerMode(info.mode)}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
-                      isSelected
-                        ? "bg-primary/20 text-primary font-semibold"
-                        : "hover:bg-base-300 opacity-80 hover:opacity-100"
-                    }`}
-                    title={info.title}
-                  >
-                    {info.icon}
-                    <span>{info.label}</span>
-                    {isSelected && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-3.5 h-3.5 ml-auto shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            <path d="M4 2l12 9.5-5.1 1.2L15.5 22l-3.1 1.3L7.8 14 4 18V2z" />
+          </svg>
+        </button>
 
         {/* Rail Tier Dropdown */}
         <div className="relative" ref={railDropdownRef}>

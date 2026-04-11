@@ -22,7 +22,6 @@ import { EVENT_IDS } from "../../../../state/event-ids";
 import type {
   BaseLayoutBuilding,
   BaseLayoutConnection,
-  BaseLayoutPointerMode,
   Building,
   RailTier,
 } from "../../../../state/db";
@@ -96,9 +95,6 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const buildingsById = useSubscription<Record<string, Building>>([
     SUB_IDS.BUILDINGS_BY_ID_MAP,
   ]);
-  const pointerMode = useSubscription<BaseLayoutPointerMode>([
-    SUB_IDS.BASES_LAYOUT_POINTER_MODE,
-  ]);
   const connectorMode = useSubscription<RailTier | null>([
     SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
   ]);
@@ -114,14 +110,12 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const selectedConnectionIds = useSubscription<string[]>([
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_IDS,
   ]);
-  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const hasInitializedView = useRef(false);
   const suppressNextNodeClick = useRef(false);
   const suppressNextPaneClick = useRef(false);
   const didCompleteConnection = useRef(false);
   const connectionDragRef = useRef<ConnectionDragState | null>(null);
-  const ctrlPanActiveRef = useRef(false);
-  const ctrlPanLastPosRef = useRef({ x: 0, y: 0 });
   const [connectionDrag, setConnectionDrag] = useState<ConnectionDragState | null>(
     null,
   );
@@ -129,9 +123,9 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [isCtrlHeld, setIsCtrlHeld] = useState(false);
-  const isPanMode = pointerMode === "pan" && !connectorMode;
-  const isSelectMode = pointerMode === "select" && !connectorMode;
-  const ctrlPan = isSelectMode && isCtrlHeld;
+  // Default drag behaviour: pan. Ctrl+drag: selection box.
+  const panOnDrag = !connectorMode && !isCtrlHeld;
+  const selectionOnDrag = !connectorMode && isCtrlHeld;
   const allowsSingleSelection = !connectorMode;
 
   const setActiveConnectionDrag = useCallback(
@@ -630,7 +624,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
-      if (connectorMode || pointerMode !== "select") {
+      if (connectorMode) {
         return;
       }
 
@@ -652,7 +646,6 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     },
     [
       connectorMode,
-      pointerMode,
       selectedBuildingIds,
       selectedConnectionIds,
     ],
@@ -701,44 +694,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     [allowsSingleSelection, selectedConnectionIds],
   );
 
-  // Ctrl+drag panning — bypass ReactFlow's gesture system (which reads panOnDrag
-  // only at pointerdown and can't be rewired dynamically) and drive panBy() directly.
-  const handleCtrlPanPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!ctrlPan) return;
-      const target = e.target as Element;
-      // Let clicks on nodes, edges and UI panels fall through normally.
-      if (
-        target.closest(".react-flow__node") ||
-        target.closest(".react-flow__edge") ||
-        target.closest(".react-flow__controls") ||
-        target.closest(".react-flow__panel")
-      ) return;
-      ctrlPanActiveRef.current = true;
-      ctrlPanLastPosRef.current = { x: e.clientX, y: e.clientY };
-      // Pointer capture keeps the pan going even if the cursor leaves the div.
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    [ctrlPan],
-  );
-
-  const handleCtrlPanPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!ctrlPanActiveRef.current) return;
-      const dx = e.clientX - ctrlPanLastPosRef.current.x;
-      const dy = e.clientY - ctrlPanLastPosRef.current.y;
-      const { x, y, zoom } = getViewport();
-      setViewport({ x: x + dx, y: y + dy, zoom });
-      ctrlPanLastPosRef.current = { x: e.clientX, y: e.clientY };
-    },
-    [getViewport, setViewport],
-  );
-
-  const handleCtrlPanPointerUp = useCallback(() => {
-    ctrlPanActiveRef.current = false;
-  }, []);
-
-  // Track Ctrl/Cmd key for temporary pan-in-select-mode behaviour.
+  // Track Ctrl/Cmd key: held = selection-box drag; released = pan drag.
   // Reset on window blur so the flag never gets stuck when the user Alt+Tabs.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -779,14 +735,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   }, [selectedBuildingIds.length, selectedConnectionIds.length]);
 
   return (
-    <div
-      className={className}
-      style={ctrlPan ? { cursor: "grab" } : undefined}
-      onPointerDown={handleCtrlPanPointerDown}
-      onPointerMove={handleCtrlPanPointerMove}
-      onPointerUp={handleCtrlPanPointerUp}
-      onPointerCancel={handleCtrlPanPointerUp}
-    >
+    <div className={className}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -814,8 +763,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         autoPanOnNodeDrag={false}
-        panOnDrag={isPanMode}
-        selectionOnDrag={isSelectMode && !isCtrlHeld}
+        panOnDrag={panOnDrag}
+        selectionOnDrag={selectionOnDrag}
         multiSelectionKeyCode={null}
         selectNodesOnDrag={false}
         selectionMode={SelectionMode.Full}
@@ -829,11 +778,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         >
           <div className="text-base-content/70" style={{ display: "none" }}>
             <div>Zoom: Scroll wheel</div>
-            <div>
-              {isPanMode
-                ? "Pan: Click & drag background"
-                : "Select: Drag the background to box-select"}
-            </div>
+            <div>Pan: Drag background · Ctrl+drag: box-select</div>
             <div>Move: Drag buildings</div>
             {connectorMode && (
               <div className="mt-2 pt-2 border-t border-base-300">

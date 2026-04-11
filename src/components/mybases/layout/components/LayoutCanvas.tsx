@@ -624,7 +624,14 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
-      if (connectorMode) {
+      // Only process selection changes that the USER initiated via a ctrl+drag box
+      // selection. All other selection paths (node clicks, edge clicks, pane clicks,
+      // and programmatic dispatches from outside the canvas) are handled by their own
+      // dedicated handlers. Without this guard, programmatic updates cause a
+      // dispatch → effect → onSelectionChange → dispatch loop because ReactFlow fires
+      // onSelectionChange for every node/edge that gets its `selected` flag changed,
+      // including changes we make ourselves.
+      if (connectorMode || !isCtrlHeld) {
         return;
       }
 
@@ -646,6 +653,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     },
     [
       connectorMode,
+      isCtrlHeld,
       selectedBuildingIds,
       selectedConnectionIds,
     ],

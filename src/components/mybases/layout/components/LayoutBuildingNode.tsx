@@ -114,21 +114,30 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     fallbackRate: number,
     productionState?: BuildingProductionState,
   ) => {
-    const actualRate = productionState?.actualOutputRate ?? fallbackRate;
-    const consumedRate = productionState?.consumedOutputRate ?? actualRate;
-    const surplusRate = Math.max(0, actualRate - consumedRate);
+    const actual = productionState?.actualOutputRate ?? fallbackRate;
+    const max = productionState?.maxOutputRate ?? fallbackRate;
+    const consumed = productionState?.consumedOutputRate ?? actual;
+    const balance = Math.round(actual - consumed);
 
-    if (surplusRate <= 0) {
-      return <>{formatRate(actualRate)}/min</>;
-    }
+    const balanceEl =
+      balance > 0 ? (
+        <span className="text-success font-semibold">
+          +{formatRate(balance)}
+        </span>
+      ) : balance < 0 ? (
+        <span className="text-error font-semibold">{formatRate(balance)}</span>
+      ) : (
+        <span className="text-base-content/40">0</span>
+      );
 
     return (
       <>
-        {formatRate(consumedRate)}/
-        <span className="text-success font-semibold">
-          +{formatRate(surplusRate)}
-        </span>
-        /min
+        {formatRate(actual)}
+        <span className="text-base-content/40">/</span>
+        <span className="text-base-content/50">{formatRate(max)}</span>
+        <span className="text-base-content/40">/</span>
+        {balanceEl}
+        <span className="text-base-content/40"> /min</span>
       </>
     );
   };
@@ -508,7 +517,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           </div>
           {!isSummaryMode && productionState && (
             <div className="mt-2">
-              <div className="flex justify-between text-xs mb-1">
+              <div className="flex items-center gap-1.5 text-xs mb-1">
                 <span
                   className={`font-semibold ${
                     productionState.productionFactor === 0
@@ -519,10 +528,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
                   }`}
                 >
                   {(productionState.productionFactor * 100).toFixed(0)}%
-                </span>
-                <span className="text-base-content/70">
-                  {productionState.actualOutputRate.toFixed(0)}/
-                  {productionState.maxOutputRate.toFixed(0)} /min
                 </span>
               </div>
               <div className="h-1.5 bg-base-100 rounded-full overflow-hidden">

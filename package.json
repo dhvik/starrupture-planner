@@ -29,7 +29,11 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": "eslint --fix"
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{css,html,json,md,yml,yaml}": "prettier --write"
   },
   "dependencies": {
     "@flexsurfer/reflex": "^0.1.24",
@@ -62,6 +66,7 @@
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "lint-staged": "^16.4.0",
+    "prettier": "^3.8.2",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4",

@@ -10,6 +10,7 @@ import type {
   Item,
   RailTier,
 } from "../../../../state/db";
+import { resolveLayoutBuildingRecipe } from "../../../../utils/recipeSelection";
 import { BuildingImage, ItemImage } from "../../../ui";
 import { calculateBuildingResourceTags } from "../utils/buildingResourceCalculator";
 import type { BuildingProductionState } from "../utils/layoutBalanceCalculator";
@@ -133,8 +134,8 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   // Local state for the receiver output-rate input stored as a string so the
   // field can be freely edited (empty, partial) without triggering validation.
   // Validation and dispatch happen only when the field loses focus or Enter/Tab.
-  const [localOutputRate, setLocalOutputRate] = useState(
-    () => String(building.receiverOutputRate || 100),
+  const [localOutputRate, setLocalOutputRate] = useState(() =>
+    String(building.receiverOutputRate || 100),
   );
   const [prevReceiverOutputRate, setPrevReceiverOutputRate] = useState(
     building.receiverOutputRate,
@@ -163,7 +164,9 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     }
   };
 
-  const handleOutputRateKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleOutputRateKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     e.stopPropagation();
     if (e.key === "Enter") {
       e.currentTarget.blur();
@@ -171,7 +174,9 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
       // Prevent the default tab-to-next-focusable behavior and instead land
       // focus on the parent ReactFlow node so the user stays in context.
       e.preventDefault();
-      const rfNode = e.currentTarget.closest(".react-flow__node") as HTMLElement | null;
+      const rfNode = e.currentTarget.closest(
+        ".react-flow__node",
+      ) as HTMLElement | null;
       e.currentTarget.blur();
       rfNode?.focus();
     }
@@ -201,9 +206,9 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
         ? "border-info !border-4 shadow-2xl"
         : isConnectionTarget
           ? "border-success !border-4 shadow-2xl"
-        : connectorMode
-          ? "border-primary border-dashed"
-          : receiverVisualClasses.borderClass;
+          : connectorMode
+            ? "border-primary border-dashed"
+            : receiverVisualClasses.borderClass;
 
     const containerClass = isSummaryMode
       ? `backdrop-blur-md ${receiverVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`
@@ -228,9 +233,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               : ""
           } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
             isConnectionTarget ? "ring-4 ring-success/40" : ""
-          } ${
-            selected ? "ring-4 ring-info/40" : ""
-          }`}
+          } ${selected ? "ring-4 ring-info/40" : ""}`}
           style={{ pointerEvents: "all" }}
         >
           {isConnectionSource && (
@@ -303,7 +306,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
   const buildingDef = buildingsById[building.buildingId];
   const item = itemsById[building.itemId];
-  const recipe = buildingDef?.recipes?.[building.recipeIndex];
+  const recipe = resolveLayoutBuildingRecipe(building, buildingDef);
   const productionState = buildingStates?.[building.id];
 
   if (!buildingDef || !item || !recipe) {
@@ -380,9 +383,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             : ""
         } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
           isConnectionTarget ? "ring-4 ring-success/40" : ""
-        } ${
-          selected ? "ring-4 ring-info/40" : ""
-        }`}
+        } ${selected ? "ring-4 ring-info/40" : ""}`}
         style={{ pointerEvents: "all" }}
       >
         {isConnectionSource && (

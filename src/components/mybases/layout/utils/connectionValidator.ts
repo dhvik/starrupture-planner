@@ -4,6 +4,7 @@ import type {
   BuildingsByIdMap,
 } from "../../../../state/db";
 import { getRailCapacity } from "./layoutBalanceCalculator";
+import { resolveLayoutBuildingRecipe } from "../../../../utils/recipeSelection";
 
 export interface ConnectionValidation {
   isValid: boolean;
@@ -61,7 +62,7 @@ export function validateConnection(
       return { isValid: false, error: "Source building has no recipes" };
     }
 
-    fromRecipe = fromBuildingDef.recipes[fromBuilding.recipeIndex];
+    fromRecipe = resolveLayoutBuildingRecipe(fromBuilding, fromBuildingDef);
     if (!fromRecipe) {
       return { isValid: false, error: "Source building recipe not found" };
     }
@@ -81,7 +82,7 @@ export function validateConnection(
     return { isValid: false, error: "Destination building has no recipes" };
   }
 
-  const toRecipe = toBuildingDef.recipes[toBuilding.recipeIndex];
+  const toRecipe = resolveLayoutBuildingRecipe(toBuilding, toBuildingDef);
   if (!toRecipe) {
     return { isValid: false, error: "Destination building recipe not found" };
   }
@@ -154,14 +155,17 @@ export function isConnectionOverCapacity(
     if (!fromBuildingDef.recipes) {
       return false;
     }
-    const fromRecipe = fromBuildingDef.recipes[fromBuilding.recipeIndex];
+    const fromRecipe = resolveLayoutBuildingRecipe(
+      fromBuilding,
+      fromBuildingDef,
+    );
     if (!fromRecipe) {
       return false;
     }
     productionRate = fromRecipe.output.amount_per_minute;
   }
 
-  const toRecipe = toBuildingDef.recipes[toBuilding.recipeIndex];
+  const toRecipe = resolveLayoutBuildingRecipe(toBuilding, toBuildingDef);
   if (!toRecipe) {
     return false;
   }

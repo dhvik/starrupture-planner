@@ -25,6 +25,7 @@ import type {
   Building,
   RailTier,
 } from "../../../../state/db";
+import { resolveLayoutBuildingRecipe } from "../../../../utils/recipeSelection";
 import type { ConnectionTransferRate } from "../utils/layoutBalanceCalculator";
 import { gridToPixels, GRID_CELL_SIZE } from "../utils/gridUtils";
 import { validateConnection } from "../utils/connectionValidator";
@@ -116,9 +117,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const suppressNextPaneClick = useRef(false);
   const didCompleteConnection = useRef(false);
   const connectionDragRef = useRef<ConnectionDragState | null>(null);
-  const [connectionDrag, setConnectionDrag] = useState<ConnectionDragState | null>(
-    null,
-  );
+  const [connectionDrag, setConnectionDrag] =
+    useState<ConnectionDragState | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -142,7 +142,9 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   useEffect(() => {
     setNodes((currentNodes) => {
       // Preserve each node's current selected state rather than resetting it.
-      const selectedById = new Map(currentNodes.map((n) => [n.id, n.selected ?? false]));
+      const selectedById = new Map(
+        currentNodes.map((n) => [n.id, n.selected ?? false]),
+      );
 
       return buildings.map((building) => {
         const pixelPos = gridToPixels(building.x, building.y);
@@ -175,7 +177,10 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     setNodes((currentNodes) =>
       currentNodes.map((node) => {
         const isSelected = selectedBuildingIds.includes(node.id);
-        if (node.selected === isSelected && (node.data as { selected?: boolean }).selected === isSelected) {
+        if (
+          node.selected === isSelected &&
+          (node.data as { selected?: boolean }).selected === isSelected
+        ) {
           return node;
         }
         return {
@@ -202,7 +207,9 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   // Does NOT track selectedConnectionIds — selection is handled separately below.
   useEffect(() => {
     setEdges((currentEdges) => {
-      const selectedById = new Map(currentEdges.map((e) => [e.id, e.selected ?? false]));
+      const selectedById = new Map(
+        currentEdges.map((e) => [e.id, e.selected ?? false]),
+      );
 
       return connections.map((connection) => {
         const rates = transferRates?.[connection.id];
@@ -236,7 +243,10 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     setEdges((currentEdges) =>
       currentEdges.map((edge) => {
         const isSelected = selectedConnectionIds.includes(edge.id);
-        if (edge.selected === isSelected && (edge.data as { selected?: boolean })?.selected === isSelected) {
+        if (
+          edge.selected === isSelected &&
+          (edge.data as { selected?: boolean })?.selected === isSelected
+        ) {
           return edge;
         }
         return {
@@ -256,7 +266,10 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       suppressNextNodeClick.current = true;
       suppressNextPaneClick.current = true;
 
-      if (selectedBuildingIds.length > 1 && selectedBuildingIds.includes(node.id)) {
+      if (
+        selectedBuildingIds.length > 1 &&
+        selectedBuildingIds.includes(node.id)
+      ) {
         return;
       }
 
@@ -327,7 +340,10 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       }
 
       const sourceBuildingDef = buildingsById[sourceBuilding.buildingId];
-      const sourceRecipe = sourceBuildingDef?.recipes?.[sourceBuilding.recipeIndex];
+      const sourceRecipe = resolveLayoutBuildingRecipe(
+        sourceBuilding,
+        sourceBuildingDef,
+      );
 
       return sourceRecipe?.output.id ?? null;
     },
@@ -346,8 +362,12 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         return { isValid: false, itemId: null };
       }
 
-      const sourceBuilding = buildings.find((building) => building.id === sourceId);
-      const targetBuilding = buildings.find((building) => building.id === targetId);
+      const sourceBuilding = buildings.find(
+        (building) => building.id === sourceId,
+      );
+      const targetBuilding = buildings.find(
+        (building) => building.id === targetId,
+      );
 
       if (!sourceBuilding || !targetBuilding) {
         return { isValid: false, itemId: null };
@@ -372,12 +392,21 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         itemId,
       };
     },
-    [buildings, buildingsById, connections, connectorMode, getSourceItemId, selectedRailTier],
+    [
+      buildings,
+      buildingsById,
+      connections,
+      connectorMode,
+      getSourceItemId,
+      selectedRailTier,
+    ],
   );
 
   const startConnectionDrag = useCallback(
     (sourceId: string) => {
-      const sourceBuilding = buildings.find((building) => building.id === sourceId);
+      const sourceBuilding = buildings.find(
+        (building) => building.id === sourceId,
+      );
       if (!sourceBuilding) {
         setActiveConnectionDrag(null);
         return;
@@ -391,7 +420,10 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       const validTargetIds = buildings
         .filter((building) => building.id !== sourceId)
-        .filter((building) => validateConnectionAttempt(sourceId, building.id).isValid)
+        .filter(
+          (building) =>
+            validateConnectionAttempt(sourceId, building.id).isValid,
+        )
         .map((building) => building.id);
 
       setActiveConnectionDrag({
@@ -400,7 +432,12 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         validTargetIds,
       });
     },
-    [buildings, getSourceItemId, setActiveConnectionDrag, validateConnectionAttempt],
+    [
+      buildings,
+      getSourceItemId,
+      setActiveConnectionDrag,
+      validateConnectionAttempt,
+    ],
   );
 
   // Handle connection creation
@@ -433,7 +470,13 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       // Clear connection drag state
       setActiveConnectionDrag(null);
     },
-    [baseId, connectorMode, selectedRailTier, setActiveConnectionDrag, validateConnectionAttempt],
+    [
+      baseId,
+      connectorMode,
+      selectedRailTier,
+      setActiveConnectionDrag,
+      validateConnectionAttempt,
+    ],
   );
 
   const handleConnectStart = useCallback(
@@ -617,7 +660,13 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   );
 
   const handleSelectionChange = useCallback(
-    ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
+    ({
+      nodes: selectedNodes,
+      edges: selectedEdges,
+    }: {
+      nodes: Node[];
+      edges: Edge[];
+    }) => {
       // Only handle ctrl+click and ctrl+drag box-selection events.
       //
       // Regular clicks and programmatic selections (e.g. balance table row click)

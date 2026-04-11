@@ -162,7 +162,7 @@ export interface Production {
   targetAmount: number;
   active?: boolean;
   corporationLevel?: CorporationLevelSelection | null;
-  recipeSelections?: Record<string, string>; // output item id -> `${buildingId}:${recipeIndex}`
+  recipeSelections?: Record<string, string>; // output item id -> `output:${buildingId}:${outputItemId}` (legacy: `${buildingId}:${recipeIndex}`)
   inputs?: BaseBuilding[]; // Snapshot of BaseBuilding inputs (not linked to base)
   status?: "active" | "inactive" | "error"; // Plan status: active when running, inactive when stopped, error when inputs insufficient
   requiredBuildings?: PlanRequiredBuilding[]; // Aggregated building requirements, populated on save
@@ -184,7 +184,7 @@ export interface BaseLayoutBuilding {
   id: string;
   x: number; // Grid X coordinate
   y: number; // Grid Y coordinate
-  itemId: string; // Item being produced
+  itemId: string; // Item being produced; used as the stable recipe identifier across data versions
   buildingId: string; // References Building.id
   recipeIndex: number; // Index of recipe in building.recipes array
   count: number; // Number of building instances (1-8), acts as multiplier
@@ -251,7 +251,7 @@ export interface CreateProductionPlanModalState {
   targetAmount: number;
   selectedCorporationLevel: CorporationLevelSelection | null;
   selectedInputIds: string[];
-  recipeSelections: Record<string, string>; // output item id -> `${buildingId}:${recipeIndex}`
+  recipeSelections: Record<string, string>; // output item id -> `output:${buildingId}:${outputItemId}` (legacy: `${buildingId}:${recipeIndex}`)
   matchInputs: boolean;
 }
 
@@ -278,7 +278,7 @@ export interface AppState {
   uiActiveTab: TabType;
   plannerSelectedItemId: string | null;
   plannerSelectedCorporationLevel: CorporationLevelSelection | null;
-  plannerRecipeSelections: Record<string, string>; // output item id -> `${buildingId}:${recipeIndex}`
+  plannerRecipeSelections: Record<string, string>; // output item id -> `output:${buildingId}:${outputItemId}` (legacy: `${buildingId}:${recipeIndex}`)
   plannerTargetAmount: number;
   basesList: Base[];
   energyGroups: EnergyGroup[];

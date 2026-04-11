@@ -49,6 +49,10 @@ import {
   getSelectedFlowInputBuildings,
   sanitizeRecipeSelectionsForInputItems,
 } from "../utils/productionPlanInputs";
+import {
+  createRecipeSelectionKey,
+  matchesRecipeSelectionKey,
+} from "../utils/recipeSelection";
 import type { CorporationWithStats } from "../components/corporations/types";
 import type {
   CorporationUsage,
@@ -493,7 +497,7 @@ function buildRecipeOptionsForOutputItems(
       }
 
       optionsByItem.get(itemId)!.options.push({
-        key: `${building.id}:${recipeIndex}`,
+        key: createRecipeSelectionKey(building.id, itemId),
         buildingId: building.id,
         buildingName: building.name,
         recipeIndex,
@@ -515,10 +519,17 @@ function buildRecipeOptionsForOutputItems(
 
     entry.defaultKey = entry.options[0].key;
     const selectedKey = recipeSelections[entry.itemId];
-    const hasSelected =
-      !!selectedKey &&
-      entry.options.some((option) => option.key === selectedKey);
-    entry.selectedKey = hasSelected ? selectedKey! : entry.defaultKey;
+    const matchingOption = selectedKey
+      ? entry.options.find((option) =>
+          matchesRecipeSelectionKey(
+            selectedKey,
+            option.buildingId,
+            entry.itemId,
+            option.recipeIndex,
+          ),
+        )
+      : undefined;
+    entry.selectedKey = matchingOption?.key ?? entry.defaultKey;
     result.push(entry);
   });
 

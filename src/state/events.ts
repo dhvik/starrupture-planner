@@ -34,6 +34,7 @@ import {
   getSelectedFlowInputBuildings,
   sanitizeRecipeSelectionsForInputItems,
 } from "../utils/productionPlanInputs";
+import { resolveLayoutBuildingRecipe } from "../utils/recipeSelection";
 import { calculateMaxTargetFromInputs } from "../utils/matchInputsCalculation";
 
 // Common function to update draftDb with version data
@@ -987,16 +988,20 @@ regEvent(
         return;
       }
     } else {
-      const sourceRecipe =
-        sourceBuildingDef.recipes?.[sourceBuilding.recipeIndex];
+      const sourceRecipe = resolveLayoutBuildingRecipe(
+        sourceBuilding,
+        sourceBuildingDef,
+      );
       if (!sourceRecipe || sourceRecipe.output.id !== itemId) {
         console.warn("Source building does not output the requested item");
         return;
       }
     }
 
-    const targetRecipe =
-      targetBuildingDef.recipes?.[targetBuilding.recipeIndex];
+    const targetRecipe = resolveLayoutBuildingRecipe(
+      targetBuilding,
+      targetBuildingDef,
+    );
     const targetAcceptsItem = targetRecipe?.inputs.some(
       (input: { id: string }) => input.id === itemId,
     );

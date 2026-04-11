@@ -5,6 +5,7 @@ import type {
   BaseLayoutConnection,
   DistributionMode,
 } from "../../../../state/db";
+import { resolveLayoutBuildingRecipe } from "../../../../utils/recipeSelection";
 
 /**
  * Rail tier capacity in items per minute
@@ -154,7 +155,7 @@ export function calculateLayoutBalance(
       continue;
     }
 
-    const recipe = building.recipes[layoutBuilding.recipeIndex];
+    const recipe = resolveLayoutBuildingRecipe(layoutBuilding, building);
     if (!recipe) {
       continue;
     }
@@ -452,7 +453,11 @@ function allocateConnectors(
           }
         }
 
-        const rate = Math.min(railCapacity, remainingOutput, targetRemainingInput);
+        const rate = Math.min(
+          railCapacity,
+          remainingOutput,
+          targetRemainingInput,
+        );
         perConnection.set(conn.id, rate);
 
         remainingOutput -= rate;

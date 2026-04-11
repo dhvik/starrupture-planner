@@ -372,7 +372,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         itemId,
       };
     },
-    [buildings, buildingsById, connections, connectorMode, getSourceItemId],
+    [buildings, buildingsById, connections, connectorMode, getSourceItemId, selectedRailTier],
   );
 
   const startConnectionDrag = useCallback(
@@ -433,7 +433,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       // Clear connection drag state
       setActiveConnectionDrag(null);
     },
-    [baseId, connectorMode, setActiveConnectionDrag, validateConnectionAttempt],
+    [baseId, connectorMode, selectedRailTier, setActiveConnectionDrag, validateConnectionAttempt],
   );
 
   const handleConnectStart = useCallback(
@@ -450,7 +450,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       startConnectionDrag(params.nodeId);
     },
-    [startConnectionDrag],
+    [setActiveConnectionDrag, startConnectionDrag],
   );
 
   const handleConnectEnd = useCallback(

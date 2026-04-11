@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from "react";
+import { memo, useState } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { useSubscription, dispatch } from "@flexsurfer/reflex";
@@ -136,9 +136,13 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   const [localOutputRate, setLocalOutputRate] = useState(
     () => String(building.receiverOutputRate || 100),
   );
-  useEffect(() => {
+  const [prevReceiverOutputRate, setPrevReceiverOutputRate] = useState(
+    building.receiverOutputRate,
+  );
+  if (prevReceiverOutputRate !== building.receiverOutputRate) {
+    setPrevReceiverOutputRate(building.receiverOutputRate);
     setLocalOutputRate(String(building.receiverOutputRate || 100));
-  }, [building.receiverOutputRate]);
+  }
 
   const handleOutputRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalOutputRate(e.target.value);

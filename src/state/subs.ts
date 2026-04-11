@@ -43,6 +43,7 @@ import {
   calculateLayoutBalance,
   calculateConnectionTransferRates,
   type ConnectionTransferRate,
+  type BuildingProductionState,
 } from "../components/mybases/layout/utils/layoutBalanceCalculator";
 import {
   getSelectedFlowInputBuildings,
@@ -1430,7 +1431,7 @@ regSub(
   SUB_IDS.BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID,
   (result: ReturnType<typeof calculateLayoutBalance>) => {
     // Convert Map to plain object so Reflex can detect changes
-    const statesObj: Record<string, any> = {};
+    const statesObj: Record<string, BuildingProductionState> = {};
     result.buildingStates.forEach((state, id) => {
       statesObj[id] = state;
     });

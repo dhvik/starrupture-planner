@@ -220,7 +220,7 @@ function normalizeBases(rawBases: unknown): Base[] {
 
         // Preserve layout data if present
         if (base.layout && typeof base.layout === 'object') {
-            normalized.layout = base.layout as any; // Pass through layout data as-is
+            normalized.layout = base.layout; // Pass through layout data as-is
         }
 
         normalizedBases.push(normalized);

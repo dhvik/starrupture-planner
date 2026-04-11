@@ -290,7 +290,7 @@ export interface AppState {
   baseLayoutSelectedBuildingId: string | null; // Currently selected building in layout
   baseLayoutSelectedConnectionIds: string[]; // Currently selected connections in layout
   baseLayoutSelectedConnectionId: string | null; // Currently selected connection in layout
-  baseLayoutItemPaletteMode: "production" | "receiver"; // Item palette mode: production buildings or package receivers
+  baseLayoutItemPaletteMode: "production_v1" | "production_v2" | "receiver"; // Item palette mode: production v1 buildings, production v2 buildings, or package receivers
   uiConfirmationDialog: ConfirmationDialog;
   productionPlanModalState: CreateProductionPlanModalState;
 }
@@ -334,7 +334,7 @@ const appState: AppState = {
   baseLayoutSelectedBuildingId: null,
   baseLayoutSelectedConnectionIds: [],
   baseLayoutSelectedConnectionId: null,
-  baseLayoutItemPaletteMode: "production",
+  baseLayoutItemPaletteMode: "production_v1",
   uiConfirmationDialog: {
     isOpen: false,
     title: "",

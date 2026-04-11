@@ -695,7 +695,8 @@ regEvent(
     // Treat "package_receiver" buildingId as a receiver even if buildingType
     // was not explicitly passed, so legacy dispatches remain consistent.
     const resolvedBuildingType: LayoutBuildingType | undefined =
-      buildingType ?? (buildingId === "package_receiver" ? "receiver" : undefined);
+      buildingType ??
+      (buildingId === "package_receiver" ? "receiver" : undefined);
 
     const layoutBuilding: BaseLayoutBuilding = {
       id: createEntityId("layout_building"),
@@ -811,7 +812,10 @@ regEvent(
 
     const moveIds = new Set(moves.map((move) => move.layoutBuildingId));
     const moveMap = new Map(
-      moves.map((move) => [move.layoutBuildingId, { x: move.newX, y: move.newY }]),
+      moves.map((move) => [
+        move.layoutBuildingId,
+        { x: move.newX, y: move.newY },
+      ]),
     );
 
     for (const move of moves) {
@@ -964,7 +968,10 @@ regEvent(
     }
 
     const buildingsById = new Map<string, Building>(
-      draftDb.buildingsList.map((building: Building) => [building.id, building]),
+      draftDb.buildingsList.map((building: Building) => [
+        building.id,
+        building,
+      ]),
     );
     const sourceBuildingDef = buildingsById.get(sourceBuilding.buildingId);
     const targetBuildingDef = buildingsById.get(targetBuilding.buildingId);
@@ -988,7 +995,8 @@ regEvent(
       }
     }
 
-    const targetRecipe = targetBuildingDef.recipes?.[targetBuilding.recipeIndex];
+    const targetRecipe =
+      targetBuildingDef.recipes?.[targetBuilding.recipeIndex];
     const targetAcceptsItem = targetRecipe?.inputs.some(
       (input: { id: string }) => input.id === itemId,
     );
@@ -1100,10 +1108,10 @@ regEvent(
   },
 );
 
-/** Set item palette mode (production or receiver) */
+/** Set item palette mode (production_v1, production_v2, or receiver) */
 regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_ITEM_PALETTE_MODE,
-  ({ draftDb }, mode: "production" | "receiver") => {
+  ({ draftDb }, mode: "production_v1" | "production_v2" | "receiver") => {
     draftDb.baseLayoutItemPaletteMode = mode;
   },
 );
@@ -1111,15 +1119,15 @@ regEvent(
 /** Set selected connection in layout */
 regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_SELECTION,
-  (
-    { draftDb },
-    buildingIds: string[] = [],
-    connectionIds: string[] = [],
-  ) => {
+  ({ draftDb }, buildingIds: string[] = [], connectionIds: string[] = []) => {
     const nextSelectedBuildingId =
-      buildingIds.length === 1 && connectionIds.length === 0 ? buildingIds[0] : null;
+      buildingIds.length === 1 && connectionIds.length === 0
+        ? buildingIds[0]
+        : null;
     const nextSelectedConnectionId =
-      connectionIds.length === 1 && buildingIds.length === 0 ? connectionIds[0] : null;
+      connectionIds.length === 1 && buildingIds.length === 0
+        ? connectionIds[0]
+        : null;
 
     if (
       areIdsEqual(draftDb.baseLayoutSelectedBuildingIds, buildingIds) &&
@@ -1222,7 +1230,9 @@ regEvent(
 
     draftDb.baseLayoutSelectedBuildingIds = [];
     draftDb.baseLayoutSelectedBuildingId = null;
-    draftDb.baseLayoutSelectedConnectionIds = connectionId ? [connectionId] : [];
+    draftDb.baseLayoutSelectedConnectionIds = connectionId
+      ? [connectionId]
+      : [];
     draftDb.baseLayoutSelectedConnectionId = connectionId;
   },
 );

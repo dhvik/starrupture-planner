@@ -30,31 +30,56 @@ const ItemPalette = ({
     SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID,
     baseId,
   ]);
-  const paletteMode = useSubscription<"production" | "receiver">([
-    SUB_IDS.BASES_LAYOUT_ITEM_PALETTE_MODE,
-  ]);
+  const paletteMode = useSubscription<
+    "production_v1" | "production_v2" | "receiver"
+  >([SUB_IDS.BASES_LAYOUT_ITEM_PALETTE_MODE]);
 
-  // Find all items that can be produced (have a recipe)
+  // Build the set of v2 building IDs (those pointed to by another building's `upgrade` field)
+  const v2BuildingIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const building of buildings) {
+      if (building.upgrade) ids.add(building.upgrade);
+    }
+    return ids;
+  }, [buildings]);
+
+  // Find all items that can be produced, filtered by palette mode
   const producibleItems = useMemo(() => {
-    const itemsWithRecipes: Array<{
+    const result: Array<{
       item: Item;
       building: Building;
       recipeIndex: number;
     }> = [];
 
-    for (const building of buildings) {
-      if (!building.recipes || building.recipes.length === 0) continue;
-
-      building.recipes.forEach((recipe, index) => {
-        const item = items.find((i) => i.id === recipe.output.id);
-        if (item) {
-          itemsWithRecipes.push({ item, building, recipeIndex: index });
-        }
-      });
+    if (paletteMode === "receiver") {
+      // Show one entry per unique item (any building that produces it)
+      const seen = new Set<string>();
+      for (const building of buildings) {
+        if (!building.recipes?.length) continue;
+        building.recipes.forEach((recipe, index) => {
+          if (seen.has(recipe.output.id)) return;
+          const item = items.find((i) => i.id === recipe.output.id);
+          if (item) {
+            seen.add(recipe.output.id);
+            result.push({ item, building, recipeIndex: index });
+          }
+        });
+      }
+      return result.sort((a, b) => a.item.name.localeCompare(b.item.name));
     }
 
-    return itemsWithRecipes;
-  }, [items, buildings]);
+    const isV2Mode = paletteMode === "production_v2";
+    for (const building of buildings) {
+      if (!building.recipes?.length) continue;
+      const isV2Building = v2BuildingIds.has(building.id);
+      if (isV2Mode !== isV2Building) continue;
+      building.recipes.forEach((recipe, index) => {
+        const item = items.find((i) => i.id === recipe.output.id);
+        if (item) result.push({ item, building, recipeIndex: index });
+      });
+    }
+    return result.sort((a, b) => a.item.name.localeCompare(b.item.name));
+  }, [items, buildings, paletteMode, v2BuildingIds]);
 
   // Filter items by search term
   const filteredItems = useMemo(() => {
@@ -129,16 +154,33 @@ const ItemPalette = ({
               type="radio"
               name="palette-mode"
               className="radio radio-sm radio-primary"
-              checked={paletteMode === "production"}
+              checked={paletteMode === "production_v1"}
               onChange={() =>
                 dispatch([
                   EVENT_IDS.BASES_LAYOUT_SET_ITEM_PALETTE_MODE,
-                  "production",
+                  "production_v1",
                 ])
               }
             />
-            <span className="text-sm">Production</span>
+            <span className="text-sm">Prod v1</span>
           </label>
+          {v2BuildingIds.size > 0 && (
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                name="palette-mode"
+                className="radio radio-sm radio-primary"
+                checked={paletteMode === "production_v2"}
+                onChange={() =>
+                  dispatch([
+                    EVENT_IDS.BASES_LAYOUT_SET_ITEM_PALETTE_MODE,
+                    "production_v2",
+                  ])
+                }
+              />
+              <span className="text-sm">Prod v2</span>
+            </label>
+          )}
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="radio"
@@ -201,7 +243,9 @@ const ItemPalette = ({
                     {item.name}
                   </div>
                   <div className="text-xs text-base-content/50 truncate">
-                    {building.name}
+                    {paletteMode === "receiver"
+                      ? "Package Receiver"
+                      : building.name}
                   </div>
                 </div>
               </button>

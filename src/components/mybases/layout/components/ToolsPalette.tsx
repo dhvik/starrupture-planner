@@ -6,6 +6,7 @@ import type {
   BaseLayoutBuilding,
   DistributionMode,
   RailTier,
+  TransferMode,
 } from "../../../../state/db";
 
 interface ToolsPaletteProps {
@@ -185,11 +186,14 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     SUB_IDS.BASES_LAYOUT_BUILDINGS_BY_BASE_ID,
     selectedBaseId,
   ]);
+  const transferMode = useSubscription<TransferMode>([
+    SUB_IDS.BASES_LAYOUT_TRANSFER_MODE,
+  ]);
+  const isVirtual = transferMode === "virtual";
 
   // Derive active modes from the first building; fall back to defaults when the
   // layout is empty or not yet loaded.
-  const activeBuildingMode: "edit" | "summary" =
-    buildings?.[0]?.mode ?? "edit";
+  const activeBuildingMode: "edit" | "summary" = buildings?.[0]?.mode ?? "edit";
   const activeDistributionMode: DistributionMode =
     buildings?.[0]?.distributionMode ?? "first-served";
 
@@ -314,11 +318,43 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   return (
     <div className={`flex flex-col ${className}`}>
       <div className="flex flex-wrap gap-2 items-center">
+        {/* Transfer Mode Toggle — Physical vs Virtual */}
+        <div className="flex rounded-lg overflow-hidden border border-base-300">
+          <button
+            className={`btn btn-sm !rounded-none border-0 transition-all ${
+              !isVirtual
+                ? "bg-primary/20 text-primary font-semibold"
+                : "opacity-60 hover:opacity-100"
+            }`}
+            onClick={() =>
+              dispatch([EVENT_IDS.BASES_LAYOUT_SET_TRANSFER_MODE, "physical"])
+            }
+            title="Physical Transfers — items flow via explicit rail connections"
+          >
+            Physical
+          </button>
+          <button
+            className={`btn btn-sm !rounded-none border-0 border-l border-base-300 transition-all ${
+              isVirtual
+                ? "bg-primary/20 text-primary font-semibold"
+                : "opacity-60 hover:opacity-100"
+            }`}
+            onClick={() =>
+              dispatch([EVENT_IDS.BASES_LAYOUT_SET_TRANSFER_MODE, "virtual"])
+            }
+            title="Virtual Transfers — all buildings share a single pool; select a building to see implicit connections"
+          >
+            Virtual
+          </button>
+        </div>
+
         {/* Select mode indicator — pan is always the default drag; Ctrl+drag box-selects */}
         <button
           className={toolBtnClass(!connectorMode)}
           title="Select mode — drag to pan · Ctrl+drag to box-select · click to select items"
-          onClick={() => dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, null])}
+          onClick={() =>
+            dispatch([EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE, null])
+          }
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -330,15 +366,18 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
           </svg>
         </button>
 
-        {/* Rail Tier Dropdown */}
+        {/* Rail Tier Dropdown — disabled in virtual mode */}
         <div className="relative" ref={railDropdownRef}>
           <button
-            onClick={() => setRailDropdownOpen((o) => !o)}
-            className={`${toolBtnClass(connectorMode !== null || railDropdownOpen)} flex items-center gap-1 !w-auto px-2`}
+            onClick={() => !isVirtual && setRailDropdownOpen((o) => !o)}
+            disabled={isVirtual}
+            className={`${toolBtnClass(connectorMode !== null || railDropdownOpen, isVirtual)} flex items-center gap-1 !w-auto px-2`}
             title={
-              selectedConnectionIds.length > 0
-                ? `Convert selected connection(s) — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
-                : `Rail tier — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
+              isVirtual
+                ? "Rail connections are not used in Virtual Transfers mode"
+                : selectedConnectionIds.length > 0
+                  ? `Convert selected connection(s) — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
+                  : `Rail tier — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
             }
           >
             {railTiers.find((r) => r.tier === selectedRailTier)?.icon}
@@ -377,7 +416,9 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
                   >
                     {icon}
                     <span>{name}</span>
-                    <span className="text-xs opacity-60 ml-auto">{capacity}/min</span>
+                    <span className="text-xs opacity-60 ml-auto">
+                      {capacity}/min
+                    </span>
                     {isSelected && (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -460,14 +501,18 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
           )}
         </div>
 
-        {/* Distribution Mode Dropdown */}
+        {/* Distribution Mode Dropdown — disabled in virtual mode (no per-connection distribution) */}
         <div className="relative" ref={distributionDropdownRef}>
           {/* Trigger button — shows the active mode's icon */}
           <button
-            onClick={() => setDistributionDropdownOpen((o) => !o)}
-            disabled={!selectedBaseId}
-            className={`${toolBtnClass(distributionDropdownOpen, !selectedBaseId)} flex items-center gap-1 !w-auto px-2`}
-            title={`Distribution: ${activeDistributionInfo.label} — click to change`}
+            onClick={() => !isVirtual && setDistributionDropdownOpen((o) => !o)}
+            disabled={!selectedBaseId || isVirtual}
+            className={`${toolBtnClass(distributionDropdownOpen, !selectedBaseId || isVirtual)} flex items-center gap-1 !w-auto px-2`}
+            title={
+              isVirtual
+                ? "Distribution mode is not used in Virtual Transfers mode"
+                : `Distribution: ${activeDistributionInfo.label} — click to change`
+            }
           >
             {activeDistributionInfo.icon}
             {/* Chevron indicator */}

@@ -41,10 +41,12 @@ export const EVENT_IDS = {
   BASES_LAYOUT_SET_GRID_OFFSET: "basesLayoutSetGridOffset",
   BASES_LAYOUT_SET_POINTER_MODE: "bases_layout/set_pointer_mode",
   BASES_LAYOUT_SET_CONNECTOR_MODE: "basesLayoutSetConnectorMode",
+  BASES_LAYOUT_SET_TRANSFER_MODE: "bases_layout/set_transfer_mode",
   BASES_LAYOUT_SET_SELECTED_RAIL_TIER: "basesLayoutSetSelectedRailTier",
   BASES_LAYOUT_SET_SELECTION: "bases_layout/set_selection",
   BASES_LAYOUT_SET_SELECTED_BUILDING: "bases_layout/set_selected_building",
-  BASES_LAYOUT_DELETE_SELECTED_BUILDING: "bases_layout/delete_selected_building",
+  BASES_LAYOUT_DELETE_SELECTED_BUILDING:
+    "bases_layout/delete_selected_building",
   BASES_LAYOUT_SET_SELECTED_CONNECTION: "bases_layout/set_selected_connection",
   BASES_LAYOUT_DELETE_SELECTED_CONNECTION:
     "bases_layout/delete_selected_connection",

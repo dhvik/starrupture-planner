@@ -24,13 +24,18 @@ import type {
   BaseLayoutConnection,
   Building,
   RailTier,
+  TransferMode,
 } from "../../../../state/db";
 import { resolveLayoutBuildingRecipe } from "../../../../utils/recipeSelection";
-import type { ConnectionTransferRate } from "../utils/layoutBalanceCalculator";
+import type {
+  ConnectionTransferRate,
+  VirtualEdge,
+} from "../utils/layoutBalanceCalculator";
 import { gridToPixels, GRID_CELL_SIZE } from "../utils/gridUtils";
 import { validateConnection } from "../utils/connectionValidator";
 import LayoutBuildingNode from "./LayoutBuildingNode";
 import LayoutConnectionEdge from "./LayoutConnectionEdge";
+import VirtualConnectionEdge from "./VirtualConnectionEdge";
 
 interface LayoutCanvasProps {
   baseId: string;
@@ -43,6 +48,7 @@ const nodeTypes = {
 
 const edgeTypes = {
   layoutConnection: LayoutConnectionEdge,
+  virtualConnection: VirtualConnectionEdge,
 };
 
 interface ConnectionDragState {
@@ -111,6 +117,14 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   const selectedConnectionIds = useSubscription<string[]>([
     SUB_IDS.BASES_LAYOUT_SELECTED_CONNECTION_IDS,
   ]);
+  const transferMode = useSubscription<TransferMode>([
+    SUB_IDS.BASES_LAYOUT_TRANSFER_MODE,
+  ]);
+  const virtualEdges = useSubscription<VirtualEdge[]>([
+    SUB_IDS.BASES_LAYOUT_VIRTUAL_EDGES_FOR_SELECTION,
+    baseId,
+  ]);
+  const isVirtual = transferMode === "virtual";
   const { screenToFlowPosition, fitView } = useReactFlow();
   const hasInitializedView = useRef(false);
   const suppressNextNodeClick = useRef(false);
@@ -158,6 +172,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
             building,
             baseId,
             connectorMode,
+            transferMode,
             isConnectionSource,
             isConnectionTarget:
               connectionDrag?.validTargetIds.includes(building.id) ?? false,
@@ -169,7 +184,14 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         };
       });
     });
-  }, [buildings, baseId, connectorMode, connectionDrag, setNodes]);
+  }, [
+    buildings,
+    baseId,
+    connectorMode,
+    transferMode,
+    connectionDrag,
+    setNodes,
+  ]);
 
   // Lightweight effect that patches only the nodes whose selection changed.
   // Keeps data object references stable for unchanged nodes so React.memo works.
@@ -206,6 +228,11 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   // Convert layout connections to ReactFlow edges.
   // Does NOT track selectedConnectionIds — selection is handled separately below.
   useEffect(() => {
+    if (isVirtual) {
+      setEdges([]);
+      return;
+    }
+
     setEdges((currentEdges) => {
       const selectedById = new Map(
         currentEdges.map((e) => [e.id, e.selected ?? false]),
@@ -236,7 +263,22 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         };
       });
     });
-  }, [connections, baseId, transferRates, setEdges]);
+  }, [connections, baseId, transferRates, isVirtual, setEdges]);
+
+  // Inject virtual highlight edges when a building is selected in virtual mode.
+  useEffect(() => {
+    if (!isVirtual) return;
+    setEdges(
+      (virtualEdges ?? []).map((ve) => ({
+        id: ve.id,
+        source: ve.fromBuildingId,
+        target: ve.toBuildingId,
+        type: "virtualConnection",
+        selectable: false,
+        data: { virtualEdge: ve },
+      })),
+    );
+  }, [virtualEdges, isVirtual, setEdges]);
 
   // Lightweight effect that patches only the edges whose selection changed.
   useEffect(() => {
@@ -443,6 +485,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
   // Handle connection creation
   const handleConnect = useCallback(
     (connection: Connection) => {
+      if (isVirtual) return;
       if (!connection.source || !connection.target) return;
 
       const validation = validateConnectionAttempt(
@@ -473,6 +516,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     [
       baseId,
       connectorMode,
+      isVirtual,
       selectedRailTier,
       setActiveConnectionDrag,
       validateConnectionAttempt,
@@ -484,6 +528,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       _event: MouseEvent | TouchEvent,
       params: { nodeId?: string | null; handleType?: string | null },
     ) => {
+      if (isVirtual) return;
       didCompleteConnection.current = false;
 
       if (params.handleType !== "source" || !params.nodeId) {
@@ -493,11 +538,12 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       startConnectionDrag(params.nodeId);
     },
-    [setActiveConnectionDrag, startConnectionDrag],
+    [isVirtual, setActiveConnectionDrag, startConnectionDrag],
   );
 
   const handleConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent) => {
+      if (isVirtual) return;
       if (didCompleteConnection.current) {
         didCompleteConnection.current = false;
         setActiveConnectionDrag(null);
@@ -545,7 +591,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
       setActiveConnectionDrag(null);
     },
-    [handleConnect, setActiveConnectionDrag],
+    [isVirtual, handleConnect, setActiveConnectionDrag],
   );
 
   // Handle drop from palette
@@ -615,7 +661,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         return;
       }
 
-      if (!connectorMode) {
+      if (!connectorMode || isVirtual) {
         if (!allowsSingleSelection) {
           return;
         }
@@ -652,6 +698,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
     [
       allowsSingleSelection,
       connectorMode,
+      isVirtual,
       connectionDrag,
       handleConnect,
       setActiveConnectionDrag,

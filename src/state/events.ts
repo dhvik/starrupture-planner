@@ -17,6 +17,7 @@ import type {
   RailTier,
   LayoutBuildingType,
   DistributionMode,
+  TransferMode,
 } from "./db";
 import {
   buildItemsMap,
@@ -1102,6 +1103,18 @@ regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_CONNECTOR_MODE,
   ({ draftDb }, railTier: RailTier | null) => {
     draftDb.baseLayoutConnectorMode = railTier;
+  },
+);
+
+/** Toggle between physical and virtual transfer mode */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_SET_TRANSFER_MODE,
+  ({ draftDb }, mode: TransferMode) => {
+    draftDb.baseLayoutTransferMode = mode;
+    // Clear any in-progress connector drag when entering virtual mode
+    if (mode === "virtual") {
+      draftDb.baseLayoutConnectorMode = null;
+    }
   },
 );
 

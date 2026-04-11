@@ -179,6 +179,7 @@ export type LayoutBuildingType = "production" | "receiver" | "storage";
 export type BuildingViewMode = "edit" | "summary";
 export type BaseLayoutPointerMode = "select" | "pan";
 export type DistributionMode = "first-served" | "shortest-path" | "equal";
+export type TransferMode = "physical" | "virtual";
 
 export interface BaseLayoutBuilding {
   id: string;
@@ -285,6 +286,7 @@ export interface AppState {
   basesSelectedBaseId: string | null;
   baseLayoutPointerMode: BaseLayoutPointerMode; // Active pointer tool for the layout canvas
   baseLayoutConnectorMode: RailTier | null; // Active connector mode for creating connections
+  baseLayoutTransferMode: TransferMode; // "physical" | "virtual" — whether explicit or implicit transfers are used
   baseLayoutSelectedRailTier: RailTier; // Persisted rail tier used for new connections
   baseLayoutSelectedBuildingIds: string[]; // Currently selected buildings in layout
   baseLayoutSelectedBuildingId: string | null; // Currently selected building in layout
@@ -329,6 +331,7 @@ const appState: AppState = {
   basesSelectedBaseId: null,
   baseLayoutPointerMode: "pan",
   baseLayoutConnectorMode: null,
+  baseLayoutTransferMode: "physical",
   baseLayoutSelectedRailTier: 1,
   baseLayoutSelectedBuildingIds: [],
   baseLayoutSelectedBuildingId: null,

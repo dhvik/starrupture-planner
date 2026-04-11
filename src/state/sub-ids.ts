@@ -64,6 +64,9 @@ export const SUB_IDS = {
   BASES_LAYOUT_CONNECTIONS_BY_BASE_ID: "basesLayoutConnectionsByBaseId",
   BASES_LAYOUT_POINTER_MODE: "baseLayoutPointerMode",
   BASES_LAYOUT_CONNECTOR_MODE: "baseLayoutConnectorMode",
+  BASES_LAYOUT_TRANSFER_MODE: "baseLayoutTransferMode",
+  BASES_LAYOUT_VIRTUAL_EDGES_FOR_SELECTION:
+    "basesLayoutVirtualEdgesForSelection",
   BASES_LAYOUT_SELECTED_RAIL_TIER: "baseLayoutSelectedRailTier",
   BASES_LAYOUT_SELECTED_BUILDING_IDS: "baseLayoutSelectedBuildingIds",
   BASES_LAYOUT_SELECTED_BUILDING_ID: "baseLayoutSelectedBuildingId",

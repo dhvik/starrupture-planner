@@ -17,6 +17,7 @@ import type {
   BaseLayoutBalance,
   BaseLayoutBuilding,
   BaseLayoutConnection,
+  TransferMode,
 } from "./db";
 import type {
   CorporationLevelInfo,
@@ -41,9 +42,12 @@ import { buildActivePlanOccupancy } from "../components/mybases/utils/activePlan
 import { calculateSharedInputShortages } from "../components/mybases/utils/sharedInputShortages";
 import {
   calculateLayoutBalance,
+  calculateVirtualLayoutBalance,
   calculateConnectionTransferRates,
+  computeVirtualEdges,
   type ConnectionTransferRate,
   type BuildingProductionState,
+  type VirtualEdge,
 } from "../components/mybases/layout/utils/layoutBalanceCalculator";
 import {
   getSelectedFlowInputBuildings,
@@ -101,6 +105,7 @@ regSub(SUB_IDS.BASES_LIST, "basesList");
 regSub(SUB_IDS.BASES_SELECTED_BASE_ID, "basesSelectedBaseId");
 regSub(SUB_IDS.BASES_LAYOUT_POINTER_MODE, "baseLayoutPointerMode");
 regSub(SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE, "baseLayoutConnectorMode");
+regSub(SUB_IDS.BASES_LAYOUT_TRANSFER_MODE, "baseLayoutTransferMode");
 regSub(SUB_IDS.BASES_LAYOUT_SELECTED_RAIL_TIER, "baseLayoutSelectedRailTier");
 regSub(
   SUB_IDS.BASES_LAYOUT_SELECTED_BUILDING_IDS,
@@ -1417,12 +1422,20 @@ regSub(
 // Combined subscription for internal use - returns both balances and building states
 regSub(
   SUB_IDS.BASES_LAYOUT_BALANCE_RESULT_BY_BASE_ID,
-  (layout: BaseLayout | undefined, buildingsById: BuildingsByIdMap) => {
+  (
+    layout: BaseLayout | undefined,
+    buildingsById: BuildingsByIdMap,
+    transferMode: TransferMode,
+  ) => {
+    if (transferMode === "virtual") {
+      return calculateVirtualLayoutBalance(layout, buildingsById);
+    }
     return calculateLayoutBalance(layout, buildingsById);
   },
   (baseId: string) => [
     [SUB_IDS.BASES_LAYOUT_BY_BASE_ID, baseId],
     [SUB_IDS.BUILDINGS_BY_ID_MAP],
+    [SUB_IDS.BASES_LAYOUT_TRANSFER_MODE],
   ],
 );
 
@@ -1473,6 +1486,32 @@ regSub(
   (baseId: string) => [
     [SUB_IDS.BASES_LAYOUT_BALANCE_RESULT_BY_BASE_ID, baseId],
     [SUB_IDS.BASES_LAYOUT_BY_BASE_ID, baseId],
+  ],
+);
+
+// Virtual edges for the selected building in virtual transfer mode.
+// Returns edges to/from buildings that exchange items with the selection.
+regSub(
+  SUB_IDS.BASES_LAYOUT_VIRTUAL_EDGES_FOR_SELECTION,
+  (
+    transferMode: TransferMode,
+    selectedBuildingId: string | null,
+    buildingStates: Record<string, BuildingProductionState>,
+    layout: BaseLayout | undefined,
+  ): VirtualEdge[] => {
+    if (transferMode !== "virtual" || !selectedBuildingId || !layout) return [];
+    return computeVirtualEdges(
+      selectedBuildingId,
+      layout.buildings,
+      buildingStates,
+    );
+  },
+  (baseId: string) => [
+    [SUB_IDS.BASES_LAYOUT_TRANSFER_MODE],
+    [SUB_IDS.BASES_LAYOUT_SELECTED_BUILDING_ID],
+    [SUB_IDS.BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID, baseId],
+    [SUB_IDS.BASES_LAYOUT_BY_BASE_ID, baseId],
+    [SUB_IDS.BUILDINGS_BY_ID_MAP],
   ],
 );
 

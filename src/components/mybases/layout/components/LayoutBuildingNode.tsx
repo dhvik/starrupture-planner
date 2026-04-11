@@ -9,6 +9,7 @@ import type {
   Building,
   Item,
   RailTier,
+  TransferMode,
 } from "../../../../state/db";
 import { resolveLayoutBuildingRecipe } from "../../../../utils/recipeSelection";
 import { BuildingImage, ItemImage } from "../../../ui";
@@ -19,6 +20,7 @@ interface LayoutBuildingNodeData {
   building: BaseLayoutBuilding;
   baseId: string;
   connectorMode?: RailTier | null;
+  transferMode?: TransferMode;
   isConnectionSource?: boolean;
   isConnectionTarget?: boolean;
   selected?: boolean;
@@ -36,10 +38,12 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     building,
     baseId,
     connectorMode,
+    transferMode,
     isConnectionSource,
     isConnectionTarget,
     selected,
   } = data;
+  const isVirtual = transferMode === "virtual";
 
   const buildingsById = useSubscription<Record<string, Building>>([
     SUB_IDS.BUILDINGS_BY_ID_MAP,
@@ -225,6 +229,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
           type="source"
           position={Position.Right}
           className={OUTPUT_HANDLE_CLASS}
+          isConnectable={!isVirtual}
         />
         <div
           className={`${containerClass} ${
@@ -375,6 +380,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
         type="target"
         position={Position.Left}
         className={INPUT_HANDLE_CLASS}
+        isConnectable={!isVirtual}
       />
       <div
         className={`${containerClass} ${
@@ -543,6 +549,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
         type="source"
         position={Position.Right}
         className={OUTPUT_HANDLE_CLASS}
+        isConnectable={!isVirtual}
       />
     </>
   );

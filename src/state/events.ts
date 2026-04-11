@@ -1300,6 +1300,25 @@ regEvent(
   },
 );
 
+/** Toggle a building's enabled state (on/off). Disabled buildings produce and consume nothing. */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_TOGGLE_BUILDING_ENABLED,
+  ({ draftDb }, baseId: string, layoutBuildingId: string) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return [];
+
+    const building = base.layout.buildings.find(
+      (b) => b.id === layoutBuildingId,
+    );
+    if (!building) return [];
+
+    // Toggle: undefined/true → false, false → true
+    building.enabled = building.enabled === false ? true : false;
+
+    return [persistBasesEffect(draftDb as AppState)];
+  },
+);
+
 /** Set all buildings in a layout to a specific mode */
 regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,

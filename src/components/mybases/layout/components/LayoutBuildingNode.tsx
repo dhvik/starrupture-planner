@@ -55,6 +55,8 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     Record<string, BuildingProductionState>
   >([SUB_IDS.BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID, baseId]);
 
+  const isEnabled = building.enabled !== false; // undefined = enabled
+
   const handleToggleMode = (e: React.MouseEvent) => {
     e.stopPropagation();
     dispatch([
@@ -63,6 +65,45 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
       building.id,
     ]);
   };
+
+  const handleToggleEnabled = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch([
+      EVENT_IDS.BASES_LAYOUT_TOGGLE_BUILDING_ENABLED,
+      baseId,
+      building.id,
+    ]);
+  };
+
+  const enabledToggleButton = (
+    <button
+      onClick={handleToggleEnabled}
+      className={`btn btn-xs btn-circle flex-shrink-0 border transition-colors ${
+        isEnabled
+          ? "bg-success/20 border-success/50 text-success hover:bg-error/20 hover:border-error/50 hover:text-error"
+          : "bg-base-300 border-base-content/20 text-base-content/40 hover:bg-success/20 hover:border-success/50 hover:text-success"
+      }`}
+      title={
+        isEnabled
+          ? "Building is ON — click to turn off"
+          : "Building is OFF — click to turn on"
+      }
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-3.5 h-3.5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+        <line x1="12" y1="2" x2="12" y2="12" />
+      </svg>
+    </button>
+  );
 
   const currentMode = building.mode || "edit";
   const isSummaryMode = currentMode === "summary";
@@ -238,7 +279,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               : ""
           } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
             isConnectionTarget ? "ring-4 ring-success/40" : ""
-          } ${selected ? "ring-4 ring-info/40" : ""}`}
+          } ${selected ? "ring-4 ring-info/40" : ""} ${!isEnabled ? "opacity-50" : ""}`}
           style={{ pointerEvents: "all" }}
         >
           {isConnectionSource && (
@@ -249,21 +290,24 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
           <div className="flex items-center justify-between mb-2 gap-1">
             <div
-              className="font-bold text-sm cursor-pointer hover:text-primary"
+              className="font-bold text-sm cursor-pointer hover:text-primary flex-1 min-w-0 truncate"
               onDoubleClick={handleToggleMode}
               title="Double-click to toggle view mode"
             >
               Package Receiver
             </div>
-            {!isSummaryMode && (
-              <button
-                onClick={handleRemove}
-                className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
-                title="Remove receiver"
-              >
-                ✕
-              </button>
-            )}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {enabledToggleButton}
+              {!isSummaryMode && (
+                <button
+                  onClick={handleRemove}
+                  className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
+                  title="Remove receiver"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-center mb-2">
@@ -389,7 +433,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             : ""
         } ${isConnectionSource ? "ring-4 ring-primary animate-pulse" : ""} ${
           isConnectionTarget ? "ring-4 ring-success/40" : ""
-        } ${selected ? "ring-4 ring-info/40" : ""}`}
+        } ${selected ? "ring-4 ring-info/40" : ""} ${!isEnabled ? "opacity-50" : ""}`}
         style={{ pointerEvents: "all" }}
       >
         {isConnectionSource && (
@@ -431,15 +475,18 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               {buildingTitle}
             </div>
           </div>
-          {!isSummaryMode && (
-            <button
-              onClick={handleRemove}
-              className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
-              title="Remove building"
-            >
-              ✕
-            </button>
-          )}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {enabledToggleButton}
+            {!isSummaryMode && (
+              <button
+                onClick={handleRemove}
+                className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
+                title="Remove building"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-center mb-2">

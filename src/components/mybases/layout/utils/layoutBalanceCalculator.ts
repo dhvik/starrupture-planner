@@ -131,6 +131,9 @@ export function calculateLayoutBalance(
   const buildingStates = new Map<string, BuildingProductionState>();
 
   for (const layoutBuilding of layout.buildings) {
+    // Skip disabled buildings — they produce and consume nothing
+    if (layoutBuilding.enabled === false) continue;
+
     // Handle package receivers separately.
     // Also check buildingId as a fallback for legacy data saved before
     // buildingType was consistently persisted.
@@ -632,6 +635,9 @@ export function calculateVirtualLayoutBalance(
   const buildingStates = new Map<string, BuildingProductionState>();
 
   for (const layoutBuilding of layout.buildings) {
+    // Skip disabled buildings — they produce and consume nothing
+    if (layoutBuilding.enabled === false) continue;
+
     const isReceiver =
       layoutBuilding.buildingType === "receiver" ||
       layoutBuilding.buildingId === "package_receiver";

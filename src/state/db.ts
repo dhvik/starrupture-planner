@@ -193,6 +193,7 @@ export interface BaseLayoutBuilding {
   receiverOutputRate?: number; // Output rate for package receivers (default: 100 units/min)
   mode?: BuildingViewMode; // Display mode for the building ("edit" | "summary"). Defaults to "edit" if not set
   distributionMode?: DistributionMode; // How output is distributed across outgoing connections. Defaults to "first-served"
+  enabled?: boolean; // Whether the building is active. Defaults to true (undefined = enabled)
 }
 
 export interface BaseLayoutConnection {

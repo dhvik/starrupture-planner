@@ -129,8 +129,13 @@ export function calculateLayoutBalance(
   const buildingStates = new Map<string, BuildingProductionState>();
 
   for (const layoutBuilding of layout.buildings) {
-    // Handle package receivers separately
-    if (layoutBuilding.buildingType === "receiver") {
+    // Handle package receivers separately.
+    // Also check buildingId as a fallback for legacy data saved before
+    // buildingType was consistently persisted.
+    const isReceiver =
+      layoutBuilding.buildingType === "receiver" ||
+      layoutBuilding.buildingId === "package_receiver";
+    if (isReceiver) {
       const outputRate = layoutBuilding.receiverOutputRate || 100;
       buildingStates.set(layoutBuilding.id, {
         buildingId: layoutBuilding.id,

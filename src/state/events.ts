@@ -692,6 +692,11 @@ regEvent(
       return [];
     }
 
+    // Treat "package_receiver" buildingId as a receiver even if buildingType
+    // was not explicitly passed, so legacy dispatches remain consistent.
+    const resolvedBuildingType: LayoutBuildingType | undefined =
+      buildingType ?? (buildingId === "package_receiver" ? "receiver" : undefined);
+
     const layoutBuilding: BaseLayoutBuilding = {
       id: createEntityId("layout_building"),
       x,
@@ -700,10 +705,10 @@ regEvent(
       buildingId,
       recipeIndex,
       count: 1,
-      ...(buildingType &&
-        buildingType !== "production" && {
-          buildingType,
-          ...(buildingType === "receiver" && {
+      ...(resolvedBuildingType &&
+        resolvedBuildingType !== "production" && {
+          buildingType: resolvedBuildingType,
+          ...(resolvedBuildingType === "receiver" && {
             receiverOutputRate: receiverOutputRate || 100,
           }),
         }),

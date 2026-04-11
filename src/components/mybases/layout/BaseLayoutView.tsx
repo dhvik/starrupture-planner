@@ -71,7 +71,7 @@ const BaseLayoutContent = ({
         </div>
 
         {/* Right Sidebar: Connector Palette + Item Palette + Balance Summary */}
-        <div className="w-96 bg-base-200 border-l border-base-300 flex flex-col overflow-hidden">
+        <div className="w-96 bg-base-200 border-l border-base-300 flex flex-col overflow-hidden" style={{gap:"5px", padding:"3px 0 0 3px"}}>
           {/* Connector Palette - Fixed height */}
           <div className="border-b border-base-300 flex-shrink-0">
             <ToolsPalette />
@@ -88,10 +88,9 @@ const BaseLayoutContent = ({
 
           {/* Balance Summary - Fixed height */}
           <div
-            className="p-4 overflow-y-auto flex-shrink-0"
+            className="overflow-y-auto flex-shrink-0"
             style={{ maxHeight: "40%" }}
           >
-            <h4 className="font-bold text-sm mb-3">Production Balance</h4>
             <BaseLayoutBalanceSummary baseId={selectedBaseId} />
           </div>
         </div>

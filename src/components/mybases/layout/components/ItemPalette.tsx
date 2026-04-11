@@ -119,8 +119,8 @@ const ItemPalette = ({
   return (
     <div className={`flex flex-col ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-base-300 flex-shrink-0">
-        <h3 className="font-bold mb-2">Item Palette</h3>
+      <div className="border-b border-base-300 flex-shrink-0">
+        {/* <h3 className="font-bold mb-2">Item Palette</h3> */}
 
         {/* Mode selector */}
         <div className="flex gap-2 mb-3">
@@ -166,7 +166,7 @@ const ItemPalette = ({
       </div>
 
       {/* Item list */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto pt-2">
         {filteredItems.length === 0 ? (
           <div className="text-center text-base-content/50 py-8">
             No items found

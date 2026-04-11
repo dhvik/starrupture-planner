@@ -385,7 +385,7 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
 
   return (
     <div className={`flex flex-col ${className}`}>
-      <div className="p-3 flex flex-wrap gap-2 items-center">
+      <div className="flex flex-wrap gap-2 items-center">
         {/* Pointer Mode Dropdown */}
         <div className="relative" ref={pointerModeDropdownRef}>
           <button
@@ -515,40 +515,6 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
           )}
         </div>
 
-        {/* Delete Tool */}
-        <button
-          onClick={handleDeleteSelected}
-          disabled={!hasSelection}
-          className={toolBtnClass(false, !hasSelection)}
-          title={
-            selectedBuildingIds.length > 0
-              ? "Delete selected buildings"
-              : selectedConnectionIds.length > 0
-                ? "Delete selected connections"
-                : "Select a building or connection first"
-          }
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-            <path d="M10 11v6" />
-            <path d="M14 11v6" />
-            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-          </svg>
-        </button>
-
-        {/* Divider */}
-        <div className="w-px h-8 bg-base-300 self-center" />
-
         {/* Building Mode Dropdown */}
         <div className="relative" ref={buildingModeDropdownRef}>
           <button
@@ -609,9 +575,6 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
             </div>
           )}
         </div>
-
-        {/* Divider */}
-        <div className="w-px h-8 bg-base-300 self-center" />
 
         {/* Distribution Mode Dropdown */}
         <div className="relative" ref={distributionDropdownRef}>
@@ -676,6 +639,37 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
             </div>
           )}
         </div>
+
+        {/* Delete Tool */}
+        <button
+          onClick={handleDeleteSelected}
+          disabled={!hasSelection}
+          className={toolBtnClass(false, !hasSelection)}
+          title={
+            selectedBuildingIds.length > 0
+              ? "Delete selected buildings"
+              : selectedConnectionIds.length > 0
+                ? "Delete selected connections"
+                : "Select a building or connection first"
+          }
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+          </svg>
+        </button>
       </div>
     </div>
   );

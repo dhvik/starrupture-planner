@@ -577,16 +577,11 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
           return;
         }
 
-        if (event.ctrlKey || event.metaKey) {
-          const isAlreadySelected = selectedBuildingIds.includes(node.id);
-          const nextIds = isAlreadySelected
-            ? selectedBuildingIds.filter((id) => id !== node.id)
-            : [...selectedBuildingIds, node.id];
-          dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTION, nextIds, []]);
-          return;
+        // Ctrl+click multi-select is handled natively by ReactFlow (multiSelectionKeyCode="Control")
+        // and flows through handleSelectionChange. Regular single-click dispatches here.
+        if (!event.ctrlKey && !event.metaKey) {
+          dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING, node.id]);
         }
-
-        dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_BUILDING, node.id]);
         return;
       }
 
@@ -616,7 +611,6 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       connectorMode,
       connectionDrag,
       handleConnect,
-      selectedBuildingIds,
       setActiveConnectionDrag,
       startConnectionDrag,
     ],
@@ -624,20 +618,15 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
-      // Only process selection changes that the USER initiated via a ctrl+drag box
-      // selection. All other selection paths (node clicks, edge clicks, pane clicks,
-      // and programmatic dispatches from outside the canvas) are handled by their own
-      // dedicated handlers. Without this guard, programmatic updates cause a
-      // dispatch → effect → onSelectionChange → dispatch loop because ReactFlow fires
-      // onSelectionChange for every node/edge that gets its `selected` flag changed,
-      // including changes we make ourselves.
-      if (connectorMode || !isCtrlHeld) {
-        return;
-      }
+      // Ignore selection events while in connector mode.
+      if (connectorMode) return;
 
       const nextSelectedNodeIds = selectedNodes.map((node) => node.id);
       const nextSelectedEdgeIds = selectedEdges.map((edge) => edge.id);
 
+      // Bail out when ReactFlow's reported selection already matches Reflex state.
+      // This breaks the loop where our own setNodes/setEdges calls (from the
+      // selection effects) trigger onSelectionChange with the same values we just set.
       if (
         areSelectedIdsEqual(nextSelectedNodeIds, selectedBuildingIds) &&
         areSelectedIdsEqual(nextSelectedEdgeIds, selectedConnectionIds)
@@ -651,12 +640,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         nextSelectedEdgeIds,
       ]);
     },
-    [
-      connectorMode,
-      isCtrlHeld,
-      selectedBuildingIds,
-      selectedConnectionIds,
-    ],
+    [connectorMode, selectedBuildingIds, selectedConnectionIds],
   );
 
   // Handle pane click - cancel connection drag and clear selections
@@ -688,18 +672,13 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
       event.stopPropagation();
       suppressNextPaneClick.current = true;
 
-      if (event.ctrlKey || event.metaKey) {
-        const isAlreadySelected = selectedConnectionIds.includes(edge.id);
-        const nextIds = isAlreadySelected
-          ? selectedConnectionIds.filter((id) => id !== edge.id)
-          : [...selectedConnectionIds, edge.id];
-        dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTION, [], nextIds]);
-        return;
+      // Ctrl+click multi-select is handled natively by ReactFlow and flows through
+      // handleSelectionChange. Regular single-click dispatches here.
+      if (!event.ctrlKey && !event.metaKey) {
+        dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, edge.id]);
       }
-
-      dispatch([EVENT_IDS.BASES_LAYOUT_SET_SELECTED_CONNECTION, edge.id]);
     },
-    [allowsSingleSelection, selectedConnectionIds],
+    [allowsSingleSelection],
   );
 
   // Track Ctrl/Cmd key: held = selection-box drag; released = pan drag.
@@ -773,7 +752,7 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         autoPanOnNodeDrag={false}
         panOnDrag={panOnDrag}
         selectionOnDrag={selectionOnDrag}
-        multiSelectionKeyCode={null}
+        multiSelectionKeyCode="Control"
         selectNodesOnDrag={false}
         selectionMode={SelectionMode.Full}
         connectionMode={ConnectionMode.Strict}

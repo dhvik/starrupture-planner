@@ -6,6 +6,7 @@ import type {
   BaseLayoutBuilding,
   Item,
 } from "../../../../state/db";
+import type { BuildingProductionState } from "../utils/layoutBalanceCalculator";
 import { ItemImage } from "../../../ui";
 
 interface BaseLayoutBalanceBadgeProps {
@@ -28,13 +29,18 @@ const BaseLayoutBalanceBadge = ({
   const itemsById = useSubscription<Record<string, Item>>([
     SUB_IDS.ITEMS_BY_ID_MAP,
   ]);
+  const buildingStates = useSubscription<
+    Record<string, BuildingProductionState>
+  >([SUB_IDS.BASES_LAYOUT_BUILDING_STATES_BY_BASE_ID, baseId]);
 
   const surplusCount = balance.filter(
     (b) => b.surplus > 0 && b.deficit === 0,
   ).length;
   const deficitCount = balance.filter((b) => b.deficit > 0).length;
 
-  // Aggregate total rate per item for receivers (inputs) and dispatchers (outputs)
+  // Aggregate rates per item for receivers (inputs) and dispatchers (outputs).
+  // Receivers use their configured output rate (always running at 100%).
+  // Dispatchers use the actual supplied rate from the balance calculator.
   const receiverRates = new Map<string, number>();
   const dispatcherRates = new Map<string, number>();
 
@@ -50,9 +56,14 @@ const BaseLayoutBalanceBadge = ({
       );
     }
     if (isDispatcher) {
+      const state = buildingStates?.[b.id];
+      const actualRate =
+        state?.inputRequirements[0]?.suppliedRate ??
+        b.dispatcherInputRate ??
+        100;
       dispatcherRates.set(
         b.itemId,
-        (dispatcherRates.get(b.itemId) ?? 0) + (b.dispatcherInputRate ?? 100),
+        (dispatcherRates.get(b.itemId) ?? 0) + actualRate,
       );
     }
   }
@@ -82,14 +93,20 @@ const BaseLayoutBalanceBadge = ({
               return item ? (
                 <button
                   key={itemId}
-                  className="flex items-center gap-1 text-left cursor-pointer hover:text-primary transition-colors"
+                  className="grid gap-x-1.5 text-left cursor-pointer hover:text-primary transition-colors"
+                  style={{
+                    gridTemplateColumns: "auto 1fr",
+                    gridTemplateRows: "auto auto",
+                  }}
                   onClick={openLayout}
                   title={`${item.name} — go to layout`}
                 >
-                  <ItemImage itemId={itemId} size="small" />
+                  <div className="row-span-2 flex items-center">
+                    <ItemImage itemId={itemId} size="small" />
+                  </div>
                   <span className="text-xs truncate">{item.name}</span>
-                  <span className="text-xs text-base-content/50 flex-shrink-0">
-                    {rate}/min
+                  <span className="text-xs text-base-content/50 text-right">
+                    {rate}
                   </span>
                 </button>
               ) : null;
@@ -110,14 +127,20 @@ const BaseLayoutBalanceBadge = ({
               return item ? (
                 <button
                   key={itemId}
-                  className="flex items-center gap-1 text-left cursor-pointer hover:text-primary transition-colors"
+                  className="grid gap-x-1.5 text-left cursor-pointer hover:text-primary transition-colors"
+                  style={{
+                    gridTemplateColumns: "auto 1fr",
+                    gridTemplateRows: "auto auto",
+                  }}
                   onClick={openLayout}
                   title={`${item.name} — go to layout`}
                 >
-                  <ItemImage itemId={itemId} size="small" />
+                  <div className="row-span-2 flex items-center">
+                    <ItemImage itemId={itemId} size="small" />
+                  </div>
                   <span className="text-xs truncate">{item.name}</span>
-                  <span className="text-xs text-base-content/50 flex-shrink-0">
-                    {rate}/min
+                  <span className="text-xs text-base-content/50 text-right">
+                    {rate}
                   </span>
                 </button>
               ) : null;

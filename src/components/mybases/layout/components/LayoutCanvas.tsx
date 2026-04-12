@@ -848,6 +848,8 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
         minZoom={0.1}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        snapToGrid
+        snapGrid={[GRID_CELL_SIZE, GRID_CELL_SIZE]}
         autoPanOnNodeDrag={false}
         panOnDrag={panOnDrag}
         selectionOnDrag={selectionOnDrag}

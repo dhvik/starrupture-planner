@@ -222,6 +222,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   };
 
   const buildingCount = building.count || 1;
+  const receiverOutputRate = building.receiverOutputRate || 100;
   const [localBuildingCount, setLocalBuildingCount] = useState(() =>
     String(buildingCount),
   );
@@ -229,6 +230,16 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   if (prevBuildingCount !== buildingCount) {
     setPrevBuildingCount(buildingCount);
     setLocalBuildingCount(String(buildingCount));
+  }
+
+  const [localReceiverOutputRate, setLocalReceiverOutputRate] = useState(() =>
+    String(receiverOutputRate),
+  );
+  const [prevReceiverOutputRate, setPrevReceiverOutputRate] =
+    useState(receiverOutputRate);
+  if (prevReceiverOutputRate !== receiverOutputRate) {
+    setPrevReceiverOutputRate(receiverOutputRate);
+    setLocalReceiverOutputRate(String(receiverOutputRate));
   }
 
   const commitBuildingCount = () => {
@@ -257,10 +268,29 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     handleToggleMode(e);
   };
 
+  const commitReceiverOutputRate = () => {
+    const parsed = parseInt(localReceiverOutputRate, 10);
+    if (!isNaN(parsed)) {
+      const clamped = Math.max(1, Math.round(parsed));
+      setLocalReceiverOutputRate(String(clamped));
+      if (clamped !== receiverOutputRate) {
+        dispatch([
+          EVENT_IDS.BASES_LAYOUT_UPDATE_RECEIVER_OUTPUT_RATE,
+          baseId,
+          building.id,
+          clamped,
+        ]);
+      }
+      return;
+    }
+
+    setLocalReceiverOutputRate(String(receiverOutputRate));
+  };
+
   if (building.buildingType === "receiver") {
     const item = itemsById[building.itemId];
     const productionState = buildingStates?.[building.id];
-    const outputRate = building.receiverOutputRate || 100;
+    const outputRate = receiverOutputRate;
     const surplusAmount = productionState
       ? Math.max(
           0,
@@ -296,6 +326,13 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
     const containerClass = `backdrop-blur-md ${receiverVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`;
 
+    const handleReceiverModeButtonClick = (e: React.MouseEvent) => {
+      if (!isSummaryMode) {
+        commitReceiverOutputRate();
+      }
+      handleToggleMode(e);
+    };
+
     return (
       <>
         <Handle
@@ -328,7 +365,21 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               Package Receiver
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {renderModeToggleButton(handleModeButtonClick, !isSummaryMode)}
+              {!isSummaryMode && (
+                <input
+                  type="number"
+                  min={1}
+                  value={localReceiverOutputRate}
+                  onChange={(e) => setLocalReceiverOutputRate(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="nodrag input input-xs w-14 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  title="Receiver output rate"
+                />
+              )}
+              {renderModeToggleButton(
+                handleReceiverModeButtonClick,
+                !isSummaryMode,
+              )}
               {enabledToggleButton}
             </div>
           </div>

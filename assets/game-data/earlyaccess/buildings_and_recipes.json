@@ -797,7 +797,8 @@
         ]
       }
     ]
-  }, {
+  },
+  {
     "id": "assembler",
     "name": "Assembler",
     "type": "production",
@@ -817,7 +818,8 @@
           {
             "id": "stator",
             "amount_per_minute": 10
-          },{
+          },
+          {
             "id": "battery",
             "amount_per_minute": 20
           }
@@ -1061,7 +1063,8 @@
           {
             "id": "applicator",
             "amount_per_minute": 50
-          },{
+          },
+          {
             "id": "electromagnet",
             "amount_per_minute": 20
           },
@@ -1080,7 +1083,8 @@
           {
             "id": "ceramics",
             "amount_per_minute": 84
-          },{
+          },
+          {
             "id": "electromagnet",
             "amount_per_minute": 24
           },

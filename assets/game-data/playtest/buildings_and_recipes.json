@@ -9,32 +9,28 @@
           "id": "ore_titanium",
           "amount_per_minute": 75
         },
-        "inputs": [
-        ]
+        "inputs": []
       },
       {
         "output": {
           "id": "ore_wolfram",
           "amount_per_minute": 75
         },
-        "inputs": [
-        ]
+        "inputs": []
       },
       {
         "output": {
           "id": "ore_calcium",
           "amount_per_minute": 75
         },
-        "inputs": [
-        ]
+        "inputs": []
       },
       {
         "output": {
           "id": "ore_sulfur",
           "amount_per_minute": 75
         },
-        "inputs": [
-        ]
+        "inputs": []
       }
     ]
   },
@@ -48,8 +44,7 @@
           "id": "helium",
           "amount_per_minute": 120
         },
-        "inputs": [
-        ]
+        "inputs": []
       }
     ]
   },

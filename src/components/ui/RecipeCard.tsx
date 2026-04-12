@@ -1,7 +1,7 @@
 import type { Recipe, Item } from "../../state/db";
 import { ItemImage } from "./ItemImage";
-import { dispatch, useSubscription } from '@flexsurfer/reflex';
-import { EVENT_IDS } from '../../state/event-ids';
+import { dispatch, useSubscription } from "@flexsurfer/reflex";
+import { EVENT_IDS } from "../../state/event-ids";
 import { SUB_IDS } from "../../state/sub-ids";
 
 interface RecipeItemIconProps {
@@ -11,21 +11,24 @@ interface RecipeItemIconProps {
   item?: Item;
 }
 
-const RecipeItemIcon = ({ itemId, amount, isOutput = false, item }: RecipeItemIconProps) => {
+const RecipeItemIcon = ({
+  itemId,
+  amount,
+  isOutput = false,
+  item,
+}: RecipeItemIconProps) => {
   return (
     <div className="flex flex-col items-center gap-1">
       {/* Amount badge */}
-      <div className={`badge badge-xs text-xs ${
-          isOutput ? 'badge-success' : 'badge-primary'
-        }`}>
-          {amount}/min
-        </div>
+      <div
+        className={`badge badge-xs text-xs ${
+          isOutput ? "badge-success" : "badge-primary"
+        }`}
+      >
+        {amount}/min
+      </div>
       <div className="relative">
-        <ItemImage
-          itemId={itemId}
-          item={item}
-          size="medium"
-        />
+        <ItemImage itemId={itemId} item={item} size="medium" />
       </div>
       <div className="text-xs text-center max-w-16 leading-tight">
         {item?.name || itemId}
@@ -40,47 +43,56 @@ interface RecipeCardProps {
 }
 
 export const RecipeCard = ({ recipe, className = "" }: RecipeCardProps) => {
-  const itemsMap = useSubscription<Record<string, Item>>([SUB_IDS.ITEMS_BY_ID_MAP]);
+  const itemsMap = useSubscription<Record<string, Item>>([
+    SUB_IDS.ITEMS_BY_ID_MAP,
+  ]);
   const outputItem = itemsMap[recipe.output.id];
 
   return (
-    <div className={`card bg-base-200 shadow-sm border border-base-300 ${className}`}>
+    <div
+      className={`card bg-base-200 shadow-sm border border-base-300 ${className}`}
+    >
       <div className="card-body p-4">
-        <div className="flex items-center gap-4 mb-3">
+        <div className="flex items-start gap-4 mb-3">
           {/* Output */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 shrink-0">
             <h4 className="text-sm font-medium text-base-content/70">Output</h4>
-            <RecipeItemIcon 
-              itemId={recipe.output.id} 
-              amount={recipe.output.amount_per_minute} 
+            <RecipeItemIcon
+              itemId={recipe.output.id}
+              amount={recipe.output.amount_per_minute}
               isOutput={true}
               item={itemsMap[recipe.output.id]}
             />
           </div>
-          
-          {/* Arrow */}
-          <div className="flex items-center justify-center px-2">
-            <svg 
-              className="w-6 h-6 text-base-content/50" 
-              fill="none" 
-              stroke="currentColor" 
+
+          {/* Arrow — stretch so the glyph stays vertically centered while columns stay top-aligned */}
+          <div className="flex items-center justify-center px-2 self-stretch">
+            <svg
+              className="w-6 h-6 text-base-content/50 shrink-0"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5l-7 7 7 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 5l-7 7 7 7"
+              />
             </svg>
           </div>
 
           {/* Inputs */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 min-w-0 flex-1">
             <h4 className="text-sm font-medium text-base-content/70">
               {recipe.inputs.length > 0 ? "Inputs" : "Raw Material"}
             </h4>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-start">
               {recipe.inputs.length > 0 ? (
                 recipe.inputs.map((input, idx) => (
-                  <RecipeItemIcon 
-                    key={`${input.id}-${idx}`} 
-                    itemId={input.id} 
+                  <RecipeItemIcon
+                    key={`${input.id}-${idx}`}
+                    itemId={input.id}
                     amount={input.amount_per_minute}
                     item={itemsMap[input.id]}
                   />
@@ -95,7 +107,7 @@ export const RecipeCard = ({ recipe, className = "" }: RecipeCardProps) => {
         </div>
 
         {/* Open in Planner button */}
-        {outputItem?.type !== 'raw' && (
+        {outputItem?.type !== "raw" && (
           <div>
             <button
               className="btn btn-xs btn-primary btn-outline"

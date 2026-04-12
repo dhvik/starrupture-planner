@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { useSubscription } from '@flexsurfer/reflex';
-import type { Building as DbBuilding, Item } from '../../../state/db';
-import { SUB_IDS } from '../../../state/sub-ids';
-import { ItemImage } from '../../ui';
+import React, { useState } from "react";
+import { useSubscription } from "@flexsurfer/reflex";
+import type { Building as DbBuilding, Item } from "../../../state/db";
+import { SUB_IDS } from "../../../state/sub-ids";
+import { ItemImage } from "../../ui";
+import { isRawExtractor } from "../utils";
 
 interface SelectItemModalProps {
   isOpen: boolean;
@@ -23,17 +24,28 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const [selectedItemIdDraft, setSelectedItemIdDraft] = useState<string | null>(null);
-  const [ratePerMinuteDraft, setRatePerMinuteDraft] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const selectedItemId = selectedItemIdDraft ?? (currentItemId || '');
-  const ratePerMinute = ratePerMinuteDraft ?? String(currentRatePerMinute || DEFAULT_RATE_PER_MINUTE);
+  const [selectedItemIdDraft, setSelectedItemIdDraft] = useState<string | null>(
+    null,
+  );
+  const [ratePerMinuteDraft, setRatePerMinuteDraft] = useState<string | null>(
+    null,
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const selectedItemId = selectedItemIdDraft ?? (currentItemId || "");
+  const ratePerMinute =
+    ratePerMinuteDraft ??
+    String(currentRatePerMinute || DEFAULT_RATE_PER_MINUTE);
 
   // Get available items from subscription
-  const availableItems = useSubscription<Item[]>([SUB_IDS.ITEMS_AVAILABLE_ITEMS_BY_BUILDING_ID, building.id]);
+  const availableItems = useSubscription<Item[]>([
+    SUB_IDS.ITEMS_AVAILABLE_ITEMS_BY_BUILDING_ID,
+    building.id,
+  ]);
 
   const filteredItems = searchQuery
-    ? availableItems.filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? availableItems.filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
     : availableItems;
 
   if (!isOpen) {
@@ -47,7 +59,7 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
       onConfirm(selectedItemId, rateValue);
       setSelectedItemIdDraft(null);
       setRatePerMinuteDraft(null);
-      setSearchQuery('');
+      setSearchQuery("");
       onClose();
     }
   };
@@ -55,7 +67,7 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
   const handleCancel = () => {
     setSelectedItemIdDraft(null);
     setRatePerMinuteDraft(null);
-    setSearchQuery('');
+    setSearchQuery("");
     onClose();
   };
 
@@ -64,7 +76,7 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
     // Set default rate from recipe only if current value is DEFAULT_RATE_PER_MINUTE
     // This preserves user-entered values and currentRatePerMinute prop
     if (building.recipes) {
-      const recipe = building.recipes.find(r => r.output.id === itemId);
+      const recipe = building.recipes.find((r) => r.output.id === itemId);
       if (recipe && Number(ratePerMinute) === DEFAULT_RATE_PER_MINUTE) {
         setRatePerMinuteDraft(String(recipe.output.amount_per_minute));
       }
@@ -74,8 +86,10 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
   return (
     <div className="modal modal-open">
       <div className="modal-box max-w-2xl">
-        <h3 className="font-bold text-lg mb-4">Select Item for {building.name}</h3>
-        
+        <h3 className="font-bold text-lg mb-4">
+          Select Item for {building.name}
+        </h3>
+
         <form onSubmit={handleSubmit}>
           <div className="form-control mb-4">
             <div className="label flex flex-row justify-between items-center gap-2">
@@ -86,9 +100,9 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
                 placeholder="Search items..."
                 value={searchQuery}
                 onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSelectedItemIdDraft('');
-              }}
+                  setSearchQuery(e.target.value);
+                  setSelectedItemIdDraft("");
+                }}
                 autoFocus
               />
             </div>
@@ -101,7 +115,7 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
                     type="button"
                     onClick={() => handleItemSelect(item.id)}
                     className={`btn btn-sm flex flex-col items-center gap-1 p-2 h-auto ${
-                      isSelected ? 'btn-primary' : 'btn-outline'
+                      isSelected ? "btn-primary" : "btn-outline"
                     }`}
                   >
                     <ItemImage
@@ -110,7 +124,9 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
                       size="small"
                       className="w-8 h-8"
                     />
-                    <span className="text-xs text-center line-clamp-2">{item.name}</span>
+                    <span className="text-xs text-center line-clamp-2">
+                      {item.name}
+                    </span>
                   </button>
                 );
               })}
@@ -130,11 +146,12 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
               step="0.01"
               required
             />
-            <div className="label">
-              <span className="label-text-alt text-base-content/30 text-xs">
-                Note: For extractors, options for output rate are 60, 120, or 240 per minute
-              </span>
-            </div>
+            {isRawExtractor(building) && (
+              <p className="mt-1.5 text-xs text-base-content/50 leading-snug w-full min-w-0 whitespace-normal">
+                Output depends on node purity and extractor tier. Enter your
+                in-game value.
+              </p>
+            )}
           </div>
 
           <div className="modal-action">
@@ -148,7 +165,9 @@ export const SelectItemModal: React.FC<SelectItemModalProps> = ({
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={!selectedItemId || !ratePerMinute || Number(ratePerMinute) <= 0}
+              disabled={
+                !selectedItemId || !ratePerMinute || Number(ratePerMinute) <= 0
+              }
             >
               Confirm
             </button>

@@ -6,11 +6,15 @@ import { BuildingImage, RecipeCard } from "./ui";
 import { useItemsData, CorporationUsageBadge } from "./items";
 
 const RecipesPage = () => {
-  const sortedBuildings = useSubscription<Building[]>([SUB_IDS.BUILDINGS_SORTED_PRODUCTION_LIST]);
+  const sortedBuildings = useSubscription<Building[]>([
+    SUB_IDS.BUILDINGS_SORTED_PRODUCTION_LIST,
+  ]);
   const { findBuildingCorporationUsage, getCorporationId } = useItemsData();
 
   // Track expanded state for each building (collapsed by default)
-  const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set());
+  const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(
+    new Set(),
+  );
 
   const toggleBuilding = (buildingId: string) => {
     const newExpanded = new Set(expandedBuildings);
@@ -39,7 +43,11 @@ const RecipesPage = () => {
     );
   };
 
-  const BuildingCard = ({ building, isCollapsed, onToggle }: {
+  const BuildingCard = ({
+    building,
+    isCollapsed,
+    onToggle,
+  }: {
     building: Building;
     isCollapsed: boolean;
     onToggle: () => void;
@@ -50,15 +58,16 @@ const RecipesPage = () => {
         <div className="card-body">
           {/* Building Header - Clickable & Sticky */}
           <div
-            className="flex items-center gap-4 mb-4 cursor-pointer hover:bg-base-200 -mx-4 -mt-4 px-4 pt-4 pb-4 rounded-t-lg transition-colors sticky top-0 z-10 bg-base-100"
+            className="flex items-start gap-4 mb-4 cursor-pointer hover:bg-base-200 -mx-4 -mt-4 px-4 pt-4 pb-4 rounded-t-lg transition-colors sticky top-0 z-10 bg-base-100"
             onClick={onToggle}
           >
             <BuildingIcon building={building} />
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h2 className="card-title text-xl">{building.name}</h2>
               <div className="flex gap-2 flex-wrap items-center">
                 <div className="badge badge-outline">
-                  {building.recipes?.length || 0} recipe{building.recipes?.length !== 1 ? 's' : ''}
+                  {building.recipes?.length || 0} recipe
+                  {building.recipes?.length !== 1 ? "s" : ""}
                 </div>
                 ⚡ {building.power || 0}
                 <span className="text-xs text-base-content/40">|</span>
@@ -84,12 +93,17 @@ const RecipesPage = () => {
             {/* Collapse Arrow */}
             <div className="flex-shrink-0">
               <svg
-                className={`w-6 h-6 text-base-content transition-transform duration-200 ${isCollapsed ? 'rotate-0' : 'rotate-90'}`}
+                className={`w-6 h-6 text-base-content transition-transform duration-200 ${isCollapsed ? "rotate-0" : "rotate-90"}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </div>
           </div>
@@ -118,16 +132,25 @@ const RecipesPage = () => {
       <div className="flex flex-col gap-4 lg:gap-6">
         {/* Header section - responsive */}
         <div className="flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center">
-          <h1 className="text-2xl lg:text-3xl font-bold">Buildings & Recipes</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold">
+            Buildings & Recipes
+          </h1>
           <div className="stats shadow stats-horizontal">
             <div className="stat">
-              <div className="stat-title text-xs sm:text-sm">Total Buildings</div>
-              <div className="stat-value text-lg sm:text-2xl">{sortedBuildings.length}</div>
+              <div className="stat-title text-xs sm:text-sm">
+                Total Buildings
+              </div>
+              <div className="stat-value text-lg sm:text-2xl">
+                {sortedBuildings.length}
+              </div>
             </div>
             <div className="stat">
               <div className="stat-title text-xs sm:text-sm">Total Recipes</div>
               <div className="stat-value text-lg sm:text-2xl">
-                {sortedBuildings.reduce((total, building) => total + (building.recipes?.length || 0), 0)}
+                {sortedBuildings.reduce(
+                  (total, building) => total + (building.recipes?.length || 0),
+                  0,
+                )}
               </div>
             </div>
           </div>
@@ -147,7 +170,9 @@ const RecipesPage = () => {
 
         {sortedBuildings.length === 0 && (
           <div className="text-center py-8">
-            <div className="text-base-content/60">No production buildings available</div>
+            <div className="text-base-content/60">
+              No production buildings available
+            </div>
           </div>
         )}
       </div>

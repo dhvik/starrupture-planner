@@ -5,6 +5,7 @@ export const SUB_IDS = {
   UI_THEME: "uiTheme",
   UI_ACTIVE_TAB: "uiActiveTab",
   UI_CONFIRMATION_DIALOG: "uiConfirmationDialog",
+  UI_GAME_DATA_LOAD_PENDING: "uiGameDataLoadPending",
 
   BUILDINGS_LIST: "buildingsList",
   BUILDINGS_BY_ID_MAP: "buildingsByIdMap",

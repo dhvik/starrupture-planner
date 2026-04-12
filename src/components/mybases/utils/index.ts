@@ -8,17 +8,14 @@ export {
   isBuildingAvailableForSection,
   getAvailableBuildingsForSection,
   getSectionTypeForBuilding,
-} from './buildingSectionUtils';
+  isRawExtractor,
+} from "./buildingSectionUtils";
 
 export {
   isAmplifierBuilding,
   calculateBaseCoreHeatCapacity,
-} from './baseCoreUtils';
+} from "./baseCoreUtils";
 
-export {
-  buildActivePlanOccupancy,
-} from './activePlanOccupancy';
+export { buildActivePlanOccupancy } from "./activePlanOccupancy";
 
-export {
-  calculateSharedInputShortages,
-} from './sharedInputShortages';
+export { calculateSharedInputShortages } from "./sharedInputShortages";

@@ -1,15 +1,8 @@
 export const EVENT_IDS = {
   APP_INIT: "appInit",
+  APP_REQUEST_LOAD_GAME_DATA: "appRequestLoadGameData",
+  APP_GAME_DATA_LOAD_FAILED: "appGameDataLoadFailed",
   APP_SET_DATA_VERSION: "appSetDataVersion",
-
-  UI_SET_THEME: "uiSetTheme",
-  UI_SET_ACTIVE_TAB: "uiSetActiveTab",
-  UI_SHOW_CONFIRMATION_DIALOG: "uiShowConfirmationDialog",
-  UI_CLOSE_CONFIRMATION_DIALOG: "uiCloseConfirmationDialog",
-
-  ITEMS_SET_SELECTED_CATEGORY: "itemsSetSelectedCategory",
-  ITEMS_SET_SELECTED_BUILDING: "itemsSetSelectedBuilding",
-  ITEMS_SET_SEARCH_TERM: "itemsSetSearchTerm",
 
   PLANNER_OPEN_ITEM: "plannerOpenItem",
   PLANNER_SET_SELECTED_ITEM: "plannerSetSelectedItem",

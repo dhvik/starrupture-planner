@@ -474,6 +474,14 @@ regEvent(
   EVENT_IDS.BASES_SET_SELECTED_BASE,
   ({ draftDb }, baseId: string | null) => {
     draftDb.basesSelectedBaseId = baseId;
+
+    if (!baseId) {
+      draftDb.baseLayoutTransferMode = "virtual";
+      return;
+    }
+
+    const base = getBaseById(draftDb.basesList, baseId);
+    draftDb.baseLayoutTransferMode = base?.layout?.transferMode ?? "virtual";
   },
 );
 
@@ -689,13 +697,35 @@ regEvent(EVENT_IDS.BASES_LAYOUT_INIT, ({ draftDb }, baseId: string) => {
   const base = getBaseById(draftDb.basesList, baseId);
   if (!base) return;
 
+  let shouldPersist = false;
+
   if (!base.layout) {
     base.layout = {
       buildings: [],
       connections: [],
       gridOffsetX: 0,
       gridOffsetY: 0,
+      transferMode: "virtual",
     };
+    shouldPersist = true;
+  }
+
+  if (!base.layout.transferMode) {
+    base.layout.transferMode = "virtual";
+    shouldPersist = true;
+  }
+
+  draftDb.baseLayoutTransferMode = base.layout.transferMode;
+
+  // Building card mode is transient; whenever a layout is opened, normalize to summary.
+  base.layout.buildings.forEach((building) => {
+    if (building.mode !== "summary") {
+      building.mode = "summary";
+      shouldPersist = true;
+    }
+  });
+
+  if (shouldPersist) {
     return [persistBasesEffect(draftDb as AppState)];
   }
 });
@@ -907,7 +937,7 @@ regEvent(
   },
 );
 
-/** Update building count (1-8) */
+/** Update building count (minimum 1) */
 regEvent(
   EVENT_IDS.BASES_LAYOUT_UPDATE_BUILDING_COUNT,
   ({ draftDb }, baseId: string, layoutBuildingId: string, count: number) => {
@@ -922,8 +952,8 @@ regEvent(
     );
     if (buildingIndex === -1) return [];
 
-    // Clamp count to 1-8
-    const newCount = Math.max(1, Math.min(8, Math.round(count)));
+    // Clamp count to minimum 1
+    const newCount = Math.max(1, Math.round(count));
 
     // Use current() to get real values from Immer draft, then create new objects
     const currentBase = current(base);
@@ -1152,9 +1182,22 @@ regEvent(
   EVENT_IDS.BASES_LAYOUT_SET_TRANSFER_MODE,
   ({ draftDb }, mode: TransferMode) => {
     draftDb.baseLayoutTransferMode = mode;
+
+    const selectedBaseId = draftDb.basesSelectedBaseId;
+    const selectedBase = selectedBaseId
+      ? getBaseById(draftDb.basesList, selectedBaseId)
+      : undefined;
+    if (selectedBase?.layout && selectedBase.layout.transferMode !== mode) {
+      selectedBase.layout.transferMode = mode;
+    }
+
     // Clear any in-progress connector drag when entering virtual mode
     if (mode === "virtual") {
       draftDb.baseLayoutConnectorMode = null;
+    }
+
+    if (selectedBase?.layout) {
+      return [persistBasesEffect(draftDb as AppState)];
     }
   },
 );

@@ -75,6 +75,48 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     ]);
   };
 
+  const renderModeToggleButton = (
+    onClick: (e: React.MouseEvent) => void,
+    isEditMode: boolean,
+  ) => (
+    <button
+      onClick={onClick}
+      className="btn btn-xs btn-circle flex-shrink-0"
+      title={isEditMode ? "Save and switch to summary" : "Switch to edit"}
+    >
+      {isEditMode ? (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-3.5 h-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+          <polyline points="17 21 17 13 7 13 7 21" />
+          <polyline points="7 3 7 8 15 8" />
+        </svg>
+      ) : (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-3.5 h-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+      )}
+    </button>
+  );
+
   const enabledToggleButton = (
     <button
       onClick={handleToggleEnabled}
@@ -110,36 +152,30 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
   const formatRate = (rate: number): string => rate.toFixed(0);
 
+  const renderCurrentMaxRate = (current: number, max: number) => {
+    const currentText = formatRate(current);
+    const maxText = formatRate(max);
+    if (currentText === maxText) {
+      return <>{currentText}</>;
+    }
+
+    return (
+      <>
+        {currentText}
+        <span className="text-base-content/40">/</span>
+        <span className="text-base-content/50">{maxText}</span>
+      </>
+    );
+  };
+
   const renderOutputRate = (
     fallbackRate: number,
     productionState?: BuildingProductionState,
   ) => {
     const actual = productionState?.actualOutputRate ?? fallbackRate;
     const max = productionState?.maxOutputRate ?? fallbackRate;
-    const consumed = productionState?.consumedOutputRate ?? actual;
-    const balance = Math.round(actual - consumed);
 
-    const balanceEl =
-      balance > 0 ? (
-        <span className="text-success font-semibold">
-          +{formatRate(balance)}
-        </span>
-      ) : balance < 0 ? (
-        <span className="text-error font-semibold">{formatRate(balance)}</span>
-      ) : (
-        <span className="text-base-content/40">0</span>
-      );
-
-    return (
-      <>
-        {formatRate(actual)}
-        <span className="text-base-content/40">/</span>
-        <span className="text-base-content/50">{formatRate(max)}</span>
-        <span className="text-base-content/40">/</span>
-        {balanceEl}
-        <span className="text-base-content/40"> /min</span>
-      </>
-    );
+    return <>{renderCurrentMaxRate(actual, max)}</>;
   };
 
   const hasSurplusOutput = (
@@ -185,61 +221,55 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     };
   };
 
-  // Local state for the receiver output-rate input stored as a string so the
-  // field can be freely edited (empty, partial) without triggering validation.
-  // Validation and dispatch happen only when the field loses focus or Enter/Tab.
-  const [localOutputRate, setLocalOutputRate] = useState(() =>
-    String(building.receiverOutputRate || 100),
+  const buildingCount = building.count || 1;
+  const [localBuildingCount, setLocalBuildingCount] = useState(() =>
+    String(buildingCount),
   );
-  const [prevReceiverOutputRate, setPrevReceiverOutputRate] = useState(
-    building.receiverOutputRate,
-  );
-  if (prevReceiverOutputRate !== building.receiverOutputRate) {
-    setPrevReceiverOutputRate(building.receiverOutputRate);
-    setLocalOutputRate(String(building.receiverOutputRate || 100));
+  const [prevBuildingCount, setPrevBuildingCount] = useState(buildingCount);
+  if (prevBuildingCount !== buildingCount) {
+    setPrevBuildingCount(buildingCount);
+    setLocalBuildingCount(String(buildingCount));
   }
 
-  const handleOutputRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalOutputRate(e.target.value);
+  const commitBuildingCount = () => {
+    const parsed = parseInt(localBuildingCount, 10);
+    if (!isNaN(parsed)) {
+      const clamped = Math.max(1, Math.round(parsed));
+      setLocalBuildingCount(String(clamped));
+      if (clamped !== buildingCount) {
+        dispatch([
+          EVENT_IDS.BASES_LAYOUT_UPDATE_BUILDING_COUNT,
+          baseId,
+          building.id,
+          clamped,
+        ]);
+      }
+      return;
+    }
+
+    setLocalBuildingCount(String(buildingCount));
   };
 
-  const handleOutputRateCommit = () => {
-    const parsed = parseInt(localOutputRate, 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      dispatch([
-        EVENT_IDS.BASES_LAYOUT_UPDATE_RECEIVER_OUTPUT_RATE,
-        baseId,
-        building.id,
-        parsed,
-      ]);
-    } else {
-      // Revert to the last persisted value if the input is empty or invalid
-      setLocalOutputRate(String(building.receiverOutputRate || 100));
+  const handleModeButtonClick = (e: React.MouseEvent) => {
+    if (!isSummaryMode) {
+      commitBuildingCount();
     }
-  };
-
-  const handleOutputRateKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    e.stopPropagation();
-    if (e.key === "Enter") {
-      e.currentTarget.blur();
-    } else if (e.key === "Tab") {
-      // Prevent the default tab-to-next-focusable behavior and instead land
-      // focus on the parent ReactFlow node so the user stays in context.
-      e.preventDefault();
-      const rfNode = e.currentTarget.closest(
-        ".react-flow__node",
-      ) as HTMLElement | null;
-      e.currentTarget.blur();
-      rfNode?.focus();
-    }
+    handleToggleMode(e);
   };
 
   if (building.buildingType === "receiver") {
     const item = itemsById[building.itemId];
     const productionState = buildingStates?.[building.id];
     const outputRate = building.receiverOutputRate || 100;
+    const surplusAmount = productionState
+      ? Math.max(
+          0,
+          Math.round(
+            productionState.actualOutputRate -
+              productionState.consumedOutputRate,
+          ),
+        )
+      : 0;
 
     if (!item) {
       return (
@@ -264,14 +294,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
             ? "border-primary border-dashed"
             : receiverVisualClasses.borderClass;
 
-    const containerClass = isSummaryMode
-      ? `backdrop-blur-md ${receiverVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`
-      : `${receiverVisualClasses.backgroundClass} rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all`;
-
-    const handleRemove = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      dispatch([EVENT_IDS.BASES_LAYOUT_REMOVE_BUILDING, baseId, building.id]);
-    };
+    const containerClass = `backdrop-blur-md ${receiverVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`;
 
     return (
       <>
@@ -299,28 +322,33 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
           <div className="flex items-center justify-between mb-2 gap-1">
             <div
-              className="font-bold text-sm cursor-pointer hover:text-primary flex-1 min-w-0 truncate"
-              onDoubleClick={handleToggleMode}
-              title="Double-click to toggle view mode"
+              className="font-bold text-sm flex-1 min-w-0 truncate"
+              title="Package Receiver"
             >
               Package Receiver
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
+              {renderModeToggleButton(handleModeButtonClick, !isSummaryMode)}
               {enabledToggleButton}
-              {!isSummaryMode && (
-                <button
-                  onClick={handleRemove}
-                  className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
-                  title="Remove receiver"
-                >
-                  ✕
-                </button>
-              )}
             </div>
           </div>
 
-          <div className="flex justify-center mb-2">
-            <BuildingImage buildingId="package_receiver" size="large" />
+          <div className="mb-2">
+            <div className="grid grid-cols-3 items-center">
+              <div aria-hidden="true" />
+              <div className="flex justify-center">
+                <BuildingImage buildingId="package_receiver" size="medium" />
+              </div>
+              <div className="flex justify-center">
+                {surplusAmount > 0 ? (
+                  <span className="text-base font-bold text-success whitespace-nowrap">
+                    +{surplusAmount}
+                  </span>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="rounded p-2 bg-base-300">
@@ -330,25 +358,9 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
                 <div className="text-xs font-semibold truncate">
                   {item.name}
                 </div>
-                {!isSummaryMode && (
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      value={localOutputRate}
-                      onChange={handleOutputRateChange}
-                      onBlur={handleOutputRateCommit}
-                      onKeyDown={handleOutputRateKeyDown}
-                      onClick={(e) => e.stopPropagation()}
-                      className="nodrag input input-xs w-16 bg-base-100"
-                    />
-                    <span className="text-xs text-base-content/70">/min</span>
-                  </div>
-                )}
-                {isSummaryMode && (
-                  <div className="text-xs text-base-content/70">
-                    {renderOutputRate(outputRate, productionState)}
-                  </div>
-                )}
+                <div className="text-xs text-base-content/70">
+                  {renderOutputRate(outputRate, productionState)}
+                </div>
               </div>
             </div>
           </div>
@@ -402,30 +414,38 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
     borderClass = "border-primary border-dashed";
   }
 
-  const containerClass = isSummaryMode
-    ? `backdrop-blur-md ${buildingVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`
-    : `${buildingVisualClasses.backgroundClass} rounded-lg border-2 ${borderClass} shadow-lg p-3 min-w-[180px] transition-all`;
+  const containerClass = `backdrop-blur-md ${buildingVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`;
 
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    dispatch([EVENT_IDS.BASES_LAYOUT_REMOVE_BUILDING, baseId, building.id]);
-  };
-
-  const handleCountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newCount = parseInt(e.target.value, 10);
-    dispatch([
-      EVENT_IDS.BASES_LAYOUT_UPDATE_BUILDING_COUNT,
-      baseId,
-      building.id,
-      newCount,
-    ]);
-  };
-
-  const buildingCount = building.count || 1;
   const buildingTitle =
     isSummaryMode && buildingCount > 1
       ? `${buildingDef.name} (x${buildingCount})`
       : buildingDef.name;
+
+  const productionFactor =
+    productionState && Number.isFinite(productionState.productionFactor)
+      ? Math.max(0, Math.min(1, productionState.productionFactor))
+      : 1;
+  const productionPercent = Math.round(productionFactor * 100);
+  const surplusAmount = productionState
+    ? Math.max(
+        0,
+        Math.round(
+          productionState.actualOutputRate - productionState.consumedOutputRate,
+        ),
+      )
+    : 0;
+  const efficiencyColorClass =
+    productionFactor === 0
+      ? "text-error"
+      : productionFactor < 0.99
+        ? "text-warning"
+        : "text-success";
+  const efficiencyFillColor =
+    productionFactor === 0
+      ? "var(--color-error)"
+      : productionFactor < 0.99
+        ? "var(--color-warning)"
+        : "var(--color-success)";
 
   return (
     <>
@@ -453,53 +473,64 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
         <div className="flex items-center justify-between mb-2 gap-1">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <div className="font-bold text-sm truncate" title={buildingTitle}>
+              {buildingTitle}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
             {!isSummaryMode && (
               <>
-                <select
-                  value={buildingCount}
-                  onChange={handleCountChange}
+                <input
+                  type="number"
+                  min={1}
+                  value={localBuildingCount}
+                  onChange={(e) => setLocalBuildingCount(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
-                  className="appearance-none bg-base-300 hover:bg-base-100 rounded px-1 py-0.5 text-xs font-bold cursor-pointer border border-base-content/20 w-[28px] text-center bg-[length:8px_8px] bg-no-repeat bg-[center_right_2px]"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23666' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E")`,
-                  }}
+                  className="nodrag input input-xs w-10 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   title="Number of buildings"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                />
                 <span className="text-xs font-semibold text-base-content/50">
                   ×
                 </span>
               </>
             )}
-            <div
-              className="font-bold text-sm truncate cursor-pointer hover:text-primary"
-              onDoubleClick={handleToggleMode}
-              title="Double-click to toggle view mode"
-            >
-              {buildingTitle}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+            {renderModeToggleButton(handleModeButtonClick, !isSummaryMode)}
             {enabledToggleButton}
-            {!isSummaryMode && (
-              <button
-                onClick={handleRemove}
-                className="btn btn-ghost btn-xs btn-circle flex-shrink-0"
-                title="Remove building"
-              >
-                ✕
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="flex justify-center mb-2">
-          <BuildingImage buildingId={buildingDef.id} size="medium" />
+        <div className="mb-2">
+          <div className="grid grid-cols-3 items-center">
+            <div className="flex justify-center">
+              <div
+                className="relative w-10 h-10 rounded-full border border-base-content/20 shadow-sm"
+                style={{
+                  background: `conic-gradient(${efficiencyFillColor} ${productionPercent}%, var(--color-base-300) 0)`,
+                }}
+                title={`Output efficiency: ${productionPercent}%`}
+              >
+                <div className="absolute inset-[5px] rounded-full bg-base-100 flex items-center justify-center">
+                  <span
+                    className={`text-[10px] font-bold ${efficiencyColorClass}`}
+                  >
+                    {productionPercent}%
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-center">
+              <BuildingImage buildingId={buildingDef.id} size="medium" />
+            </div>
+            <div className="flex justify-center">
+              {surplusAmount > 0 ? (
+                <span className="text-base font-bold text-success whitespace-nowrap">
+                  +{surplusAmount}
+                </span>
+              ) : (
+                <span aria-hidden="true" />
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="rounded p-2 bg-base-300">
@@ -515,37 +546,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               </div>
             </div>
           </div>
-          {!isSummaryMode && productionState && (
-            <div className="mt-2">
-              <div className="flex items-center gap-1.5 text-xs mb-1">
-                <span
-                  className={`font-semibold ${
-                    productionState.productionFactor === 0
-                      ? "text-error"
-                      : productionState.productionFactor < 0.99
-                        ? "text-warning"
-                        : "text-success"
-                  }`}
-                >
-                  {(productionState.productionFactor * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div className="h-1.5 bg-base-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    productionState.productionFactor === 0
-                      ? "bg-error"
-                      : productionState.productionFactor < 0.99
-                        ? "bg-warning"
-                        : "bg-success"
-                  }`}
-                  style={{
-                    width: `${productionState.productionFactor * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         {resourceTags.length > 0 && (
@@ -555,9 +555,6 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
               if (!tagItem) return null;
 
               if (tag.type === "output") return null;
-              if (isSummaryMode && tag.fulfillmentRatio >= 0.99) {
-                return null;
-              }
 
               let bgClass = "bg-base-300";
               let textClass = "";
@@ -576,16 +573,12 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
                   className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${bgClass} ${textClass}`}
                 >
                   <ItemImage itemId={tag.itemId} size="small" />
-                  <span className="flex-1 truncate">{tagItem.name}</span>
-                  <span className="font-bold whitespace-nowrap">
-                    {tag.rate.toFixed(0)}
-                    {tag.rate < tag.maxRate && (
-                      <span className="opacity-50">
-                        /{tag.maxRate.toFixed(0)}
-                      </span>
-                    )}
-                    /min
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{tagItem.name}</div>
+                    <div className="font-bold whitespace-nowrap">
+                      {renderCurrentMaxRate(tag.rate, tag.maxRate)}
+                    </div>
+                  </div>
                 </div>
               );
             })}

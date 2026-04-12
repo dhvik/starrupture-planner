@@ -41,56 +41,6 @@ const railTiers: RailTierInfo[] = [
   },
 ];
 
-interface BuildingModeInfo {
-  mode: "edit" | "summary";
-  label: string;
-  title: string;
-  icon: React.ReactNode;
-}
-
-const buildingModes: BuildingModeInfo[] = [
-  {
-    mode: "edit",
-    label: "Edit",
-    title: "Edit — buildings show full controls",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-        <path d="m15 5 4 4" />
-      </svg>
-    ),
-  },
-  {
-    mode: "summary",
-    label: "Summary",
-    title: "Summary — buildings show compact read-only view",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-      </svg>
-    ),
-  },
-];
-
 interface DistributionModeInfo {
   mode: DistributionMode;
   label: string;
@@ -166,6 +116,24 @@ const distributionModes: DistributionModeInfo[] = [
   },
 ];
 
+const transferModes: Array<{
+  mode: TransferMode;
+  label: string;
+  title: string;
+}> = [
+  {
+    mode: "virtual",
+    label: "Virtual",
+    title:
+      "Virtual Transfers — all buildings share a single pool; select a building to see implicit connections",
+  },
+  {
+    mode: "physical",
+    label: "Physical",
+    title: "Physical Transfers — items flow via explicit rail connections",
+  },
+];
+
 const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const connectorMode = useSubscription<RailTier | null>([
     SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE,
@@ -191,15 +159,10 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   ]);
   const isVirtual = transferMode === "virtual";
 
-  // Derive active modes from the first building; fall back to defaults when the
+  // Derive active distribution mode from the first building; fall back to defaults when the
   // layout is empty or not yet loaded.
-  const activeBuildingMode: "edit" | "summary" = buildings?.[0]?.mode ?? "edit";
   const activeDistributionMode: DistributionMode =
     buildings?.[0]?.distributionMode ?? "first-served";
-
-  const [buildingModeDropdownOpen, setBuildingModeDropdownOpen] =
-    useState(false);
-  const buildingModeDropdownRef = useRef<HTMLDivElement>(null);
 
   const [distributionDropdownOpen, setDistributionDropdownOpen] =
     useState(false);
@@ -208,16 +171,8 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const [railDropdownOpen, setRailDropdownOpen] = useState(false);
   const railDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close each dropdown when the user clicks outside of it.
-  useEffect(() => {
-    if (!buildingModeDropdownOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (!buildingModeDropdownRef.current?.contains(e.target as Node))
-        setBuildingModeDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [buildingModeDropdownOpen]);
+  const [transferDropdownOpen, setTransferDropdownOpen] = useState(false);
+  const transferDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!distributionDropdownOpen) return;
@@ -246,6 +201,20 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [railDropdownOpen]);
+
+  useEffect(() => {
+    if (!transferDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        transferDropdownRef.current &&
+        !transferDropdownRef.current.contains(e.target as Node)
+      ) {
+        setTransferDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [transferDropdownOpen]);
 
   const handleSelectRailTier = (tier: RailTier) => {
     setRailDropdownOpen(false);
@@ -280,17 +249,6 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const hasSelection =
     selectedBuildingIds.length > 0 || selectedConnectionIds.length > 0;
 
-  const handleSelectBuildingMode = (mode: "edit" | "summary") => {
-    setBuildingModeDropdownOpen(false);
-    if (selectedBaseId) {
-      dispatch([
-        EVENT_IDS.BASES_LAYOUT_SET_ALL_BUILDINGS_MODE,
-        selectedBaseId,
-        mode,
-      ]);
-    }
-  };
-
   const handleSelectDistributionMode = (mode: DistributionMode) => {
     setDistributionDropdownOpen(false);
     if (selectedBaseId) {
@@ -314,38 +272,80 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
   const activeDistributionInfo =
     distributionModes.find((d) => d.mode === activeDistributionMode) ??
     distributionModes[0];
+  const activeTransferInfo =
+    transferModes.find((t) => t.mode === transferMode) ?? transferModes[0];
 
   return (
     <div className={`flex flex-col ${className}`}>
       <div className="flex flex-wrap gap-2 items-center">
-        {/* Transfer Mode Toggle — Physical vs Virtual */}
-        <div className="flex rounded-lg overflow-hidden border border-base-300">
+        {/* Transfer Mode Dropdown */}
+        <div className="relative" ref={transferDropdownRef}>
           <button
-            className={`btn btn-sm !rounded-none border-0 transition-all ${
-              !isVirtual
-                ? "bg-primary/20 text-primary font-semibold"
-                : "opacity-60 hover:opacity-100"
-            }`}
             onClick={() =>
-              dispatch([EVENT_IDS.BASES_LAYOUT_SET_TRANSFER_MODE, "physical"])
+              selectedBaseId && setTransferDropdownOpen((open) => !open)
             }
-            title="Physical Transfers — items flow via explicit rail connections"
+            disabled={!selectedBaseId}
+            className={`${toolBtnClass(transferDropdownOpen, !selectedBaseId)} flex items-center gap-1 !w-auto px-2`}
+            title={activeTransferInfo.title}
           >
-            Physical
+            <span className="text-xs font-semibold">
+              {activeTransferInfo.label}
+            </span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-3 h-3 transition-transform ${transferDropdownOpen ? "rotate-180" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
-          <button
-            className={`btn btn-sm !rounded-none border-0 border-l border-base-300 transition-all ${
-              isVirtual
-                ? "bg-primary/20 text-primary font-semibold"
-                : "opacity-60 hover:opacity-100"
-            }`}
-            onClick={() =>
-              dispatch([EVENT_IDS.BASES_LAYOUT_SET_TRANSFER_MODE, "virtual"])
-            }
-            title="Virtual Transfers — all buildings share a single pool; select a building to see implicit connections"
-          >
-            Virtual
-          </button>
+
+          {transferDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[150px]">
+              {transferModes.map((info) => {
+                const isSelected = info.mode === transferMode;
+                return (
+                  <button
+                    key={info.mode}
+                    onClick={() => {
+                      setTransferDropdownOpen(false);
+                      dispatch([
+                        EVENT_IDS.BASES_LAYOUT_SET_TRANSFER_MODE,
+                        info.mode,
+                      ]);
+                    }}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
+                      isSelected
+                        ? "bg-primary/20 text-primary font-semibold"
+                        : "hover:bg-base-300 opacity-80 hover:opacity-100"
+                    }`}
+                    title={info.title}
+                  >
+                    <span>{info.label}</span>
+                    {isSelected && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-3.5 h-3.5 ml-auto shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Select mode indicator — pan is always the default drag; Ctrl+drag box-selects */}
@@ -366,208 +366,144 @@ const ToolsPalette = ({ className }: ToolsPaletteProps) => {
           </svg>
         </button>
 
-        {/* Rail Tier Dropdown — disabled in virtual mode */}
-        <div className="relative" ref={railDropdownRef}>
-          <button
-            onClick={() => !isVirtual && setRailDropdownOpen((o) => !o)}
-            disabled={isVirtual}
-            className={`${toolBtnClass(connectorMode !== null || railDropdownOpen, isVirtual)} flex items-center gap-1 !w-auto px-2`}
-            title={
-              isVirtual
-                ? "Rail connections are not used in Virtual Transfers mode"
-                : selectedConnectionIds.length > 0
+        {/* Rail Tier Dropdown — hidden in virtual mode */}
+        {!isVirtual && (
+          <div className="relative" ref={railDropdownRef}>
+            <button
+              onClick={() => setRailDropdownOpen((o) => !o)}
+              className={`${toolBtnClass(connectorMode !== null || railDropdownOpen)} flex items-center gap-1 !w-auto px-2`}
+              title={
+                selectedConnectionIds.length > 0
                   ? `Convert selected connection(s) — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
                   : `Rail tier — current: ${railTiers.find((r) => r.tier === selectedRailTier)?.name}`
-            }
-          >
-            {railTiers.find((r) => r.tier === selectedRailTier)?.icon}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`w-3 h-3 transition-transform ${railDropdownOpen ? "rotate-180" : ""}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              }
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+              {railTiers.find((r) => r.tier === selectedRailTier)?.icon}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`w-3 h-3 transition-transform ${railDropdownOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
 
-          {railDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[160px]">
-              {railTiers.map(({ tier, name, capacity, icon }) => {
-                const isSelected = tier === selectedRailTier;
-                return (
-                  <button
-                    key={tier}
-                    onClick={() => handleSelectRailTier(tier)}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
-                      isSelected
-                        ? "bg-primary/20 text-primary font-semibold"
-                        : "hover:bg-base-300 opacity-80 hover:opacity-100"
-                    }`}
-                    title={
-                      selectedConnectionIds.length > 0
-                        ? `Convert selected connection(s) to ${name} (${capacity}/min)`
-                        : `${name} — ${capacity}/min capacity`
-                    }
-                  >
-                    {icon}
-                    <span>{name}</span>
-                    <span className="text-xs opacity-60 ml-auto">
-                      {capacity}/min
-                    </span>
-                    {isSelected && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-3.5 h-3.5 shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            {railDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[160px]">
+                {railTiers.map(({ tier, name, capacity, icon }) => {
+                  const isSelected = tier === selectedRailTier;
+                  return (
+                    <button
+                      key={tier}
+                      onClick={() => handleSelectRailTier(tier)}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
+                        isSelected
+                          ? "bg-primary/20 text-primary font-semibold"
+                          : "hover:bg-base-300 opacity-80 hover:opacity-100"
+                      }`}
+                      title={
+                        selectedConnectionIds.length > 0
+                          ? `Convert selected connection(s) to ${name} (${capacity}/min)`
+                          : `${name} — ${capacity}/min capacity`
+                      }
+                    >
+                      {icon}
+                      <span>{name}</span>
+                      <span className="text-xs opacity-60 ml-auto">
+                        {capacity}/min
+                      </span>
+                      {isSelected && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-3.5 h-3.5 shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Building Mode Dropdown */}
-        <div className="relative" ref={buildingModeDropdownRef}>
-          <button
-            onClick={() => setBuildingModeDropdownOpen((o) => !o)}
-            disabled={!selectedBaseId}
-            className={`${toolBtnClass(buildingModeDropdownOpen, !selectedBaseId)} flex items-center gap-1 !w-auto px-2`}
-            title={`Building mode: ${buildingModes.find((m) => m.mode === activeBuildingMode)?.label} — click to change`}
-          >
-            {buildingModes.find((m) => m.mode === activeBuildingMode)?.icon}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`w-3 h-3 transition-transform ${buildingModeDropdownOpen ? "rotate-180" : ""}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        {/* Distribution Mode Dropdown — hidden in virtual mode */}
+        {!isVirtual && (
+          <div className="relative" ref={distributionDropdownRef}>
+            {/* Trigger button — shows the active mode's icon */}
+            <button
+              onClick={() => setDistributionDropdownOpen((o) => !o)}
+              disabled={!selectedBaseId}
+              className={`${toolBtnClass(distributionDropdownOpen, !selectedBaseId)} flex items-center gap-1 !w-auto px-2`}
+              title={`Distribution: ${activeDistributionInfo.label} — click to change`}
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+              {activeDistributionInfo.icon}
+              {/* Chevron indicator */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`w-3 h-3 transition-transform ${distributionDropdownOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
 
-          {buildingModeDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[160px]">
-              {buildingModes.map((info) => {
-                const isSelected = info.mode === activeBuildingMode;
-                return (
-                  <button
-                    key={info.mode}
-                    onClick={() => handleSelectBuildingMode(info.mode)}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
-                      isSelected
-                        ? "bg-primary/20 text-primary font-semibold"
-                        : "hover:bg-base-300 opacity-80 hover:opacity-100"
-                    }`}
-                    title={info.title}
-                  >
-                    {info.icon}
-                    <span>{info.label}</span>
-                    {isSelected && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-3.5 h-3.5 ml-auto shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Distribution Mode Dropdown — disabled in virtual mode (no per-connection distribution) */}
-        <div className="relative" ref={distributionDropdownRef}>
-          {/* Trigger button — shows the active mode's icon */}
-          <button
-            onClick={() => !isVirtual && setDistributionDropdownOpen((o) => !o)}
-            disabled={!selectedBaseId || isVirtual}
-            className={`${toolBtnClass(distributionDropdownOpen, !selectedBaseId || isVirtual)} flex items-center gap-1 !w-auto px-2`}
-            title={
-              isVirtual
-                ? "Distribution mode is not used in Virtual Transfers mode"
-                : `Distribution: ${activeDistributionInfo.label} — click to change`
-            }
-          >
-            {activeDistributionInfo.icon}
-            {/* Chevron indicator */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`w-3 h-3 transition-transform ${distributionDropdownOpen ? "rotate-180" : ""}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-
-          {/* Dropdown panel */}
-          {distributionDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[160px]">
-              {distributionModes.map((info) => {
-                const isSelected = info.mode === activeDistributionMode;
-                return (
-                  <button
-                    key={info.mode}
-                    onClick={() => handleSelectDistributionMode(info.mode)}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
-                      isSelected
-                        ? "bg-primary/20 text-primary font-semibold"
-                        : "hover:bg-base-300 opacity-80 hover:opacity-100"
-                    }`}
-                    title={info.title}
-                  >
-                    {info.icon}
-                    <span>{info.label}</span>
-                    {isSelected && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-3.5 h-3.5 ml-auto shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            {/* Dropdown panel */}
+            {distributionDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 z-50 bg-base-200 border border-base-300 rounded-lg shadow-xl p-1 flex flex-col gap-1 min-w-[160px]">
+                {distributionModes.map((info) => {
+                  const isSelected = info.mode === activeDistributionMode;
+                  return (
+                    <button
+                      key={info.mode}
+                      onClick={() => handleSelectDistributionMode(info.mode)}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all w-full text-left ${
+                        isSelected
+                          ? "bg-primary/20 text-primary font-semibold"
+                          : "hover:bg-base-300 opacity-80 hover:opacity-100"
+                      }`}
+                      title={info.title}
+                    >
+                      {info.icon}
+                      <span>{info.label}</span>
+                      {isSelected && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-3.5 h-3.5 ml-auto shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Delete Tool */}
         <button

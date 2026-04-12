@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSubscription, dispatch } from "@flexsurfer/reflex";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { SUB_IDS } from "../../../state/sub-ids";
@@ -71,7 +72,10 @@ const BaseLayoutContent = ({
         </div>
 
         {/* Right Sidebar: Connector Palette + Item Palette + Balance Summary */}
-        <div className="w-96 bg-base-200 border-l border-base-300 flex flex-col overflow-hidden" style={{gap:"5px", padding:"3px 0 0 3px"}}>
+        <div
+          className="w-96 bg-base-200 border-l border-base-300 flex flex-col overflow-hidden"
+          style={{ gap: "5px", padding: "3px 0 0 3px" }}
+        >
           {/* Connector Palette - Fixed height */}
           <div className="border-b border-base-300 flex-shrink-0">
             <ToolsPalette />
@@ -107,17 +111,18 @@ const BaseLayoutView = ({ onBack }: BaseLayoutViewProps = {}) => {
     SUB_IDS.BASES_SELECTED_BASE,
   ]);
 
-  // Initialize layout if it doesn't exist
+  // Initialize layout and normalize transient per-building view state.
   const initializeLayout = () => {
-    if (selectedBaseId && selectedBase && !selectedBase.layout) {
+    if (selectedBaseId) {
       dispatch([EVENT_IDS.BASES_LAYOUT_INIT, selectedBaseId]);
     }
   };
 
-  // Ensure layout is initialized on mount
-  if (selectedBaseId && selectedBase && !selectedBase.layout) {
+  // Ensure layout state is initialized when opening/switching base layout.
+  // Do not rerun on every selectedBase update, otherwise edit mode toggles get reset immediately.
+  useEffect(() => {
     initializeLayout();
-  }
+  }, [selectedBaseId]);
 
   if (!selectedBaseId || !selectedBase) {
     return (

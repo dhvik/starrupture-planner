@@ -176,6 +176,7 @@ export interface BaseLayout {
   connections: BaseLayoutConnection[];
   gridOffsetX: number; // Pan offset for viewport
   gridOffsetY: number; // Pan offset for viewport
+  transferMode?: TransferMode; // Saved transfer mode for this base layout
 }
 
 export interface BaseLayoutBalance {
@@ -288,7 +289,7 @@ const appState: AppState = {
   basesSelectedBaseId: null,
   baseLayoutPointerMode: "pan",
   baseLayoutConnectorMode: null,
-  baseLayoutTransferMode: "physical",
+  baseLayoutTransferMode: "virtual",
   baseLayoutSelectedRailTier: 1,
   baseLayoutSelectedBuildingIds: [],
   baseLayoutSelectedBuildingId: null,

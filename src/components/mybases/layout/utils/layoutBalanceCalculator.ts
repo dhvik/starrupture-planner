@@ -154,6 +154,29 @@ export function calculateLayoutBalance(
       continue;
     }
 
+    const isDispatcher =
+      layoutBuilding.buildingType === "dispatcher" ||
+      layoutBuilding.buildingId === "package_dispatcher";
+    if (isDispatcher) {
+      const inputRate = layoutBuilding.dispatcherInputRate || 100;
+      buildingStates.set(layoutBuilding.id, {
+        buildingId: layoutBuilding.id,
+        outputItemId: layoutBuilding.itemId,
+        maxOutputRate: 0,
+        actualOutputRate: 0,
+        consumedOutputRate: 0,
+        inputRequirements: [
+          {
+            itemId: layoutBuilding.itemId,
+            requiredRate: inputRate,
+            suppliedRate: 0,
+          },
+        ],
+        productionFactor: 1,
+      });
+      continue;
+    }
+
     const building = buildingsById[layoutBuilding.buildingId];
     if (!building || !building.recipes || building.recipes.length === 0) {
       continue;
@@ -650,6 +673,29 @@ export function calculateVirtualLayoutBalance(
         actualOutputRate: outputRate,
         consumedOutputRate: 0,
         inputRequirements: [],
+        productionFactor: 1,
+      });
+      continue;
+    }
+
+    const isDispatcher =
+      layoutBuilding.buildingType === "dispatcher" ||
+      layoutBuilding.buildingId === "package_dispatcher";
+    if (isDispatcher) {
+      const inputRate = layoutBuilding.dispatcherInputRate || 100;
+      buildingStates.set(layoutBuilding.id, {
+        buildingId: layoutBuilding.id,
+        outputItemId: layoutBuilding.itemId,
+        maxOutputRate: 0,
+        actualOutputRate: 0,
+        consumedOutputRate: 0,
+        inputRequirements: [
+          {
+            itemId: layoutBuilding.itemId,
+            requiredRate: inputRate,
+            suppliedRate: 0,
+          },
+        ],
         productionFactor: 1,
       });
       continue;

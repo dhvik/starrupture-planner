@@ -60,7 +60,10 @@ const BaseLayoutBalanceSummary = ({
         const isReceiver =
           lb.buildingType === "receiver" ||
           lb.buildingId === "package_receiver";
-        if (isReceiver) {
+        const isDispatcher =
+          lb.buildingType === "dispatcher" ||
+          lb.buildingId === "package_dispatcher";
+        if (isReceiver || isDispatcher) {
           if (lb.itemId === itemId) buildingIds.push(lb.id);
           continue;
         }

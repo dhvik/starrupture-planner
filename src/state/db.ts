@@ -142,7 +142,11 @@ export interface EnergyGroup {
 
 // Base Layout types
 export type RailTier = 1 | 2 | 3;
-export type LayoutBuildingType = "production" | "receiver" | "storage";
+export type LayoutBuildingType =
+  | "production"
+  | "receiver"
+  | "storage"
+  | "dispatcher";
 export type BuildingViewMode = "edit" | "summary";
 export type BaseLayoutPointerMode = "select" | "pan";
 export type DistributionMode = "first-served" | "shortest-path" | "equal";
@@ -156,8 +160,9 @@ export interface BaseLayoutBuilding {
   buildingId: string; // References Building.id
   recipeIndex: number; // Index of recipe in building.recipes array
   count: number; // Number of building instances (1-8), acts as multiplier
-  buildingType?: LayoutBuildingType; // Type of layout building (production, receiver, storage). Defaults to "production" if not set
+  buildingType?: LayoutBuildingType; // Type of layout building (production, receiver, storage, dispatcher). Defaults to "production" if not set
   receiverOutputRate?: number; // Output rate for package receivers (default: 100 units/min)
+  dispatcherInputRate?: number; // Input rate for package dispatchers (default: 100 units/min)
   mode?: BuildingViewMode; // Display mode for the building ("edit" | "summary"). Defaults to "edit" if not set
   distributionMode?: DistributionMode; // How output is distributed across outgoing connections. Defaults to "first-served"
   enabled?: boolean; // Whether the building is active. Defaults to true (undefined = enabled)
@@ -257,7 +262,11 @@ export interface AppState {
   baseLayoutSelectedBuildingId: string | null; // Currently selected building in layout
   baseLayoutSelectedConnectionIds: string[]; // Currently selected connections in layout
   baseLayoutSelectedConnectionId: string | null; // Currently selected connection in layout
-  baseLayoutItemPaletteMode: "production_v1" | "production_v2" | "receiver"; // Item palette mode: production v1 buildings, production v2 buildings, or package receivers
+  baseLayoutItemPaletteMode:
+    | "production_v1"
+    | "production_v2"
+    | "receiver"
+    | "dispatcher"; // Item palette mode: production v1 buildings, production v2 buildings, package receivers, or package dispatchers
   uiConfirmationDialog: ConfirmationDialog;
   productionPlanModalState: CreateProductionPlanModalState;
 }

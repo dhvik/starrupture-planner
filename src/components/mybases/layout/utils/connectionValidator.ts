@@ -77,6 +77,48 @@ export function validateConnection(
     productionRate = fromRecipe.output.amount_per_minute;
   }
 
+  // Handle package dispatchers as destination (they don't have recipes)
+  const isDispatcherTarget =
+    toBuilding.buildingType === "dispatcher" ||
+    toBuilding.buildingId === "package_dispatcher";
+
+  if (isDispatcherTarget) {
+    if (toBuilding.itemId !== itemId) {
+      return {
+        isValid: false,
+        error: `Dispatcher does not consume ${itemId}`,
+      };
+    }
+
+    // Check for duplicate connections
+    if (existingConnections) {
+      const duplicate = existingConnections.find(
+        (conn) =>
+          conn.fromBuildingId === fromBuilding.id &&
+          conn.toBuildingId === toBuilding.id &&
+          conn.itemId === itemId,
+      );
+      if (duplicate) {
+        return {
+          isValid: false,
+          error:
+            "Connection already exists between these buildings for this item",
+        };
+      }
+    }
+
+    const demandRate = toBuilding.dispatcherInputRate || 100;
+    const railCapacity = getRailCapacity(railTier);
+    const requiredCapacity = Math.min(productionRate, demandRate);
+    if (railCapacity < requiredCapacity) {
+      return {
+        isValid: true,
+        warning: `Rail capacity (${railCapacity}/min) is below required flow rate (${requiredCapacity}/min)`,
+      };
+    }
+    return { isValid: true };
+  }
+
   // Check if destination building has recipes
   if (!toBuildingDef.recipes || toBuildingDef.recipes.length === 0) {
     return { isValid: false, error: "Destination building has no recipes" };
@@ -142,7 +184,11 @@ export function isConnectionOverCapacity(
   const fromBuildingDef = buildingsById[fromBuilding.buildingId];
   const toBuildingDef = buildingsById[toBuilding.buildingId];
 
-  if (!fromBuildingDef || !toBuildingDef?.recipes) {
+  const isDispatcherTarget =
+    toBuilding.buildingType === "dispatcher" ||
+    toBuilding.buildingId === "package_dispatcher";
+
+  if (!fromBuildingDef || (!isDispatcherTarget && !toBuildingDef?.recipes)) {
     return false;
   }
 
@@ -163,6 +209,13 @@ export function isConnectionOverCapacity(
       return false;
     }
     productionRate = fromRecipe.output.amount_per_minute;
+  }
+
+  if (isDispatcherTarget) {
+    const demandRate = toBuilding.dispatcherInputRate || 100;
+    const railCapacity = getRailCapacity(connection.railTier);
+    const requiredCapacity = Math.min(productionRate, demandRate);
+    return railCapacity < requiredCapacity;
   }
 
   const toRecipe = resolveLayoutBuildingRecipe(toBuilding, toBuildingDef);

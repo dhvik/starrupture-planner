@@ -377,6 +377,10 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
 
   const getSourceItemId = useCallback(
     (sourceBuilding: BaseLayoutBuilding): string | null => {
+      if (sourceBuilding.buildingType === "dispatcher") {
+        return null; // Dispatchers have no output — they cannot be a connection source
+      }
+
       if (sourceBuilding.buildingType === "receiver") {
         return sourceBuilding.itemId;
       }
@@ -627,6 +631,19 @@ const LayoutCanvas = ({ baseId, className }: LayoutCanvasProps) => {
             "package_receiver",
             0,
             "receiver",
+            100,
+          ]);
+        } else if (paletteMode === "dispatcher") {
+          dispatch([
+            EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
+            baseId,
+            gridX,
+            gridY,
+            itemId,
+            "package_dispatcher",
+            0,
+            "dispatcher",
+            undefined,
             100,
           ]);
         } else {

@@ -31,7 +31,7 @@ const ItemPalette = ({
     baseId,
   ]);
   const paletteMode = useSubscription<
-    "production_v1" | "production_v2" | "receiver"
+    "production_v1" | "production_v2" | "receiver" | "dispatcher"
   >([SUB_IDS.BASES_LAYOUT_ITEM_PALETTE_MODE]);
 
   // Build the set of v2 building IDs (those pointed to by another building's `upgrade` field)
@@ -51,7 +51,7 @@ const ItemPalette = ({
       recipeIndex: number;
     }> = [];
 
-    if (paletteMode === "receiver") {
+    if (paletteMode === "receiver" || paletteMode === "dispatcher") {
       // Show one entry per unique item (any building that produces it)
       const seen = new Set<string>();
       for (const building of buildings) {
@@ -122,10 +122,24 @@ const ItemPalette = ({
         position.x,
         position.y,
         itemId,
-        "package_receiver", // Use a special building ID for receivers
-        0, // recipeIndex not used for receivers
-        "receiver", // buildingType
-        100, // Default output rate
+        "package_receiver",
+        0,
+        "receiver",
+        100,
+      ]);
+    } else if (paletteMode === "dispatcher") {
+      // Add package dispatcher
+      dispatch([
+        EVENT_IDS.BASES_LAYOUT_ADD_BUILDING,
+        baseId,
+        position.x,
+        position.y,
+        itemId,
+        "package_dispatcher",
+        0,
+        "dispatcher",
+        undefined,
+        100,
       ]);
     } else {
       // Normal production building
@@ -196,6 +210,21 @@ const ItemPalette = ({
             />
             <span className="text-sm">Receiver</span>
           </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              name="palette-mode"
+              className="radio radio-sm radio-primary"
+              checked={paletteMode === "dispatcher"}
+              onChange={() =>
+                dispatch([
+                  EVENT_IDS.BASES_LAYOUT_SET_ITEM_PALETTE_MODE,
+                  "dispatcher",
+                ])
+              }
+            />
+            <span className="text-sm">Dispatcher</span>
+          </label>
         </div>
 
         <input
@@ -245,7 +274,9 @@ const ItemPalette = ({
                   <div className="text-xs text-base-content/50 truncate">
                     {paletteMode === "receiver"
                       ? "Package Receiver"
-                      : building.name}
+                      : paletteMode === "dispatcher"
+                        ? "Package Dispatcher"
+                        : building.name}
                   </div>
                 </div>
               </button>

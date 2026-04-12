@@ -743,6 +743,7 @@ regEvent(
     recipeIndex: number,
     buildingType?: LayoutBuildingType,
     receiverOutputRate?: number,
+    dispatcherInputRate?: number,
   ) => {
     console.log("[BASES_LAYOUT_ADD_BUILDING] Event called for baseId:", baseId);
     const base = getBaseById(draftDb.basesList, baseId);
@@ -769,7 +770,11 @@ regEvent(
     // was not explicitly passed, so legacy dispatches remain consistent.
     const resolvedBuildingType: LayoutBuildingType | undefined =
       buildingType ??
-      (buildingId === "package_receiver" ? "receiver" : undefined);
+      (buildingId === "package_receiver"
+        ? "receiver"
+        : buildingId === "package_dispatcher"
+          ? "dispatcher"
+          : undefined);
 
     const layoutBuilding: BaseLayoutBuilding = {
       id: createEntityId("layout_building"),
@@ -784,6 +789,9 @@ regEvent(
           buildingType: resolvedBuildingType,
           ...(resolvedBuildingType === "receiver" && {
             receiverOutputRate: receiverOutputRate || 100,
+          }),
+          ...(resolvedBuildingType === "dispatcher" && {
+            dispatcherInputRate: dispatcherInputRate || 100,
           }),
         }),
     };
@@ -1004,6 +1012,29 @@ regEvent(
     if (!building || building.buildingType !== "receiver") return [];
 
     building.receiverOutputRate = Math.max(1, outputRate);
+
+    return [persistBasesEffect(draftDb as AppState)];
+  },
+);
+
+/** Update package dispatcher input rate */
+regEvent(
+  EVENT_IDS.BASES_LAYOUT_UPDATE_DISPATCHER_INPUT_RATE,
+  (
+    { draftDb },
+    baseId: string,
+    layoutBuildingId: string,
+    inputRate: number,
+  ) => {
+    const base = getBaseById(draftDb.basesList, baseId);
+    if (!base || !base.layout) return [];
+
+    const building = base.layout.buildings.find(
+      (b) => b.id === layoutBuildingId,
+    );
+    if (!building || building.buildingType !== "dispatcher") return [];
+
+    building.dispatcherInputRate = Math.max(1, inputRate);
 
     return [persistBasesEffect(draftDb as AppState)];
   },

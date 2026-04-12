@@ -37,6 +37,8 @@ export const EVENT_IDS = {
   BASES_LAYOUT_UPDATE_BUILDING_COUNT: "basesLayoutUpdateBuildingCount",
   BASES_LAYOUT_UPDATE_RECEIVER_OUTPUT_RATE:
     "basesLayoutUpdateReceiverOutputRate",
+  BASES_LAYOUT_UPDATE_DISPATCHER_INPUT_RATE:
+    "basesLayoutUpdateDispatcherInputRate",
   BASES_LAYOUT_ADD_CONNECTION: "basesLayoutAddConnection",
   BASES_LAYOUT_REMOVE_CONNECTION: "basesLayoutRemoveConnection",
   BASES_LAYOUT_UPDATE_CONNECTION_TIER: "basesLayoutUpdateConnectionTier",

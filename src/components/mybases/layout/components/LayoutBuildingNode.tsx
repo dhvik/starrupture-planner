@@ -223,6 +223,7 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
 
   const buildingCount = building.count || 1;
   const receiverOutputRate = building.receiverOutputRate || 100;
+  const dispatcherInputRate = building.dispatcherInputRate || 100;
   const [localBuildingCount, setLocalBuildingCount] = useState(() =>
     String(buildingCount),
   );
@@ -240,6 +241,16 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
   if (prevReceiverOutputRate !== receiverOutputRate) {
     setPrevReceiverOutputRate(receiverOutputRate);
     setLocalReceiverOutputRate(String(receiverOutputRate));
+  }
+
+  const [localDispatcherInputRate, setLocalDispatcherInputRate] = useState(() =>
+    String(dispatcherInputRate),
+  );
+  const [prevDispatcherInputRate, setPrevDispatcherInputRate] =
+    useState(dispatcherInputRate);
+  if (prevDispatcherInputRate !== dispatcherInputRate) {
+    setPrevDispatcherInputRate(dispatcherInputRate);
+    setLocalDispatcherInputRate(String(dispatcherInputRate));
   }
 
   const commitBuildingCount = () => {
@@ -266,6 +277,25 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
       commitBuildingCount();
     }
     handleToggleMode(e);
+  };
+
+  const commitDispatcherInputRate = () => {
+    const parsed = parseInt(localDispatcherInputRate, 10);
+    if (!isNaN(parsed)) {
+      const clamped = Math.max(1, Math.round(parsed));
+      setLocalDispatcherInputRate(String(clamped));
+      if (clamped !== dispatcherInputRate) {
+        dispatch([
+          EVENT_IDS.BASES_LAYOUT_UPDATE_DISPATCHER_INPUT_RATE,
+          baseId,
+          building.id,
+          clamped,
+        ]);
+      }
+      return;
+    }
+
+    setLocalDispatcherInputRate(String(dispatcherInputRate));
   };
 
   const commitReceiverOutputRate = () => {
@@ -411,6 +441,130 @@ const LayoutBuildingNode = memo((props: NodeProps) => {
                 </div>
                 <div className="text-xs text-base-content/70">
                   {renderOutputRate(outputRate, productionState)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2 flex gap-2 text-xs text-base-content/70">
+            <div>⚡ 40</div>
+            <div>🔥 40</div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (building.buildingType === "dispatcher") {
+    const item = itemsById[building.itemId];
+    const productionState = buildingStates?.[building.id];
+    const inputReq = productionState?.inputRequirements[0];
+    const suppliedRate = inputReq?.suppliedRate ?? dispatcherInputRate;
+    const requiredRate = inputReq?.requiredRate ?? dispatcherInputRate;
+    const deficitAmount = Math.max(0, Math.round(requiredRate - suppliedRate));
+    const hasDeficit = deficitAmount > 0;
+
+    if (!item) {
+      return (
+        <div className="bg-error text-error-content p-2 rounded">
+          Invalid dispatcher item
+        </div>
+      );
+    }
+
+    const dispatcherVisualClasses = getStateVisualClasses(hasDeficit, false);
+
+    const borderClass = isConnectionTarget
+      ? "border-success !border-4 shadow-2xl"
+      : selected
+        ? "border-info !border-4 shadow-2xl"
+        : isConnectionSource
+          ? "border-primary !border-4 shadow-2xl"
+          : connectorMode
+            ? "border-primary border-dashed"
+            : dispatcherVisualClasses.borderClass;
+
+    const containerClass = `backdrop-blur-md ${dispatcherVisualClasses.summaryBackgroundClass} rounded-lg border-2 ${borderClass} shadow-xl p-3 min-w-[180px] transition-all`;
+
+    const handleDispatcherModeButtonClick = (e: React.MouseEvent) => {
+      if (!isSummaryMode) {
+        commitDispatcherInputRate();
+      }
+      handleToggleMode(e);
+    };
+
+    return (
+      <>
+        <Handle
+          type="target"
+          position={Position.Left}
+          className={INPUT_HANDLE_CLASS}
+          isConnectable={!isVirtual}
+        />
+        <div
+          className={`${containerClass} ${
+            connectorMode
+              ? "cursor-pointer hover:ring-4 hover:ring-primary/50 hover:shadow-2xl"
+              : ""
+          } ${isConnectionTarget ? "ring-4 ring-success/40" : ""} ${
+            selected ? "ring-4 ring-info/40" : ""
+          } ${!isEnabled ? "opacity-50" : ""}`}
+          style={{ pointerEvents: "all" }}
+        >
+          <div className="flex items-center justify-between mb-2 gap-1">
+            <div
+              className="font-bold text-sm flex-1 min-w-0 truncate"
+              title="Package Dispatcher"
+            >
+              Package Dispatcher
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {!isSummaryMode && (
+                <input
+                  type="number"
+                  min={1}
+                  value={localDispatcherInputRate}
+                  onChange={(e) => setLocalDispatcherInputRate(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="nodrag input input-xs w-14 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  title="Dispatcher input rate"
+                />
+              )}
+              {renderModeToggleButton(
+                handleDispatcherModeButtonClick,
+                !isSummaryMode,
+              )}
+              {enabledToggleButton}
+            </div>
+          </div>
+
+          <div className="mb-2">
+            <div className="grid grid-cols-3 items-center">
+              <div className="flex justify-center">
+                {hasDeficit ? (
+                  <span className="text-base font-bold text-error whitespace-nowrap">
+                    -{deficitAmount}
+                  </span>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+              </div>
+              <div className="flex justify-center">
+                <BuildingImage buildingId="package_dispatcher" size="medium" />
+              </div>
+              <div aria-hidden="true" />
+            </div>
+          </div>
+
+          <div className="rounded p-2 bg-base-300">
+            <div className="flex items-center gap-2">
+              <ItemImage itemId={item.id} size="small" />
+              <div className="flex-1">
+                <div className="text-xs font-semibold truncate">
+                  {item.name}
+                </div>
+                <div className="text-xs text-base-content/70">
+                  {renderCurrentMaxRate(suppliedRate, requiredRate)}
                 </div>
               </div>
             </div>

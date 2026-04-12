@@ -485,6 +485,21 @@ regEvent(
   },
 );
 
+regEvent(
+  EVENT_IDS.BASES_OPEN_LAYOUT_DIRECTLY,
+  ({ draftDb }, baseId: string) => {
+    draftDb.basesSelectedBaseId = baseId;
+    draftDb.baseLayoutOpenDirectly = true;
+
+    const base = getBaseById(draftDb.basesList, baseId);
+    draftDb.baseLayoutTransferMode = base?.layout?.transferMode ?? "virtual";
+  },
+);
+
+regEvent(EVENT_IDS.BASES_CLEAR_LAYOUT_OPEN_DIRECTLY, ({ draftDb }) => {
+  draftDb.baseLayoutOpenDirectly = false;
+});
+
 /** Creates a new BaseBuilding object with a unique ID. */
 function createBaseBuilding(
   buildingTypeId: string,

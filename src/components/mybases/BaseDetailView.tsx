@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { useSubscription } from "@flexsurfer/reflex";
+import { useSubscription, dispatch } from "@flexsurfer/reflex";
 import { SUB_IDS } from "../../state/sub-ids";
+import { EVENT_IDS } from "../../state/event-ids";
 import type { Base } from "../../state/db";
 import {
   BaseCoreInfo,
@@ -17,9 +18,17 @@ export const BaseDetailView: React.FC = () => {
   const selectedBase = useSubscription<Base | null>([
     SUB_IDS.BASES_SELECTED_BASE,
   ]);
+  const openDirectly = useSubscription<boolean>([
+    SUB_IDS.BASES_LAYOUT_OPEN_DIRECTLY,
+  ]);
   const [activeTab, setActiveTab] = useState<BaseDetailTab>(
     "plans" as BaseDetailTab,
   );
+
+  const handleLayoutBack = () => {
+    setActiveTab("plans");
+    dispatch([EVENT_IDS.BASES_CLEAR_LAYOUT_OPEN_DIRECTLY]);
+  };
 
   // Early return if no base selected
   if (!selectedBase) {
@@ -33,9 +42,9 @@ export const BaseDetailView: React.FC = () => {
 
   return (
     <div className="h-full min-h-0 flex flex-col">
-      {/* If layout tab is active, show full-page layout view */}
-      {activeTab === "layout" ? (
-        <BaseLayoutView onBack={() => setActiveTab("plans")} />
+      {/* If layout tab is active or openDirectly, show full-page layout view */}
+      {activeTab === "layout" || openDirectly ? (
+        <BaseLayoutView onBack={handleLayoutBack} />
       ) : (
         <>
           <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-3 lg:px-3 lg:pb-4">
@@ -100,7 +109,9 @@ export const BaseDetailView: React.FC = () => {
 
             {activeTab === "balance" && hasLayout && (
               <div className="bg-base-200 rounded-lg p-3 sm:p-4">
-                <h3 className="font-semibold text-sm mb-3">Production Balance</h3>
+                <h3 className="font-semibold text-sm mb-3">
+                  Production Balance
+                </h3>
                 <BaseLayoutBalanceSummary baseId={selectedBase.id} />
               </div>
             )}

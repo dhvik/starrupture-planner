@@ -60,6 +60,8 @@ export const EVENT_IDS = {
   BASES_LAYOUT_SET_ALL_BUILDINGS_DISTRIBUTION_MODE:
     "basesLayoutSetAllBuildingsDistributionMode",
   BASES_LAYOUT_INIT: "basesLayoutInit",
+  BASES_OPEN_LAYOUT_DIRECTLY: "basesOpenLayoutDirectly",
+  BASES_CLEAR_LAYOUT_OPEN_DIRECTLY: "basesClearLayoutOpenDirectly",
 
   ENERGY_GROUP_CREATE: "energyGroupCreate",
   ENERGY_GROUP_DELETE: "energyGroupDelete",

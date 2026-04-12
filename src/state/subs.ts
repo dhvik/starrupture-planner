@@ -104,6 +104,7 @@ regSub(SUB_IDS.PLANNER_RECIPE_SELECTIONS, "plannerRecipeSelections");
 regSub(SUB_IDS.PLANNER_TARGET_AMOUNT, "plannerTargetAmount");
 regSub(SUB_IDS.BASES_LIST, "basesList");
 regSub(SUB_IDS.BASES_SELECTED_BASE_ID, "basesSelectedBaseId");
+regSub(SUB_IDS.BASES_LAYOUT_OPEN_DIRECTLY, "baseLayoutOpenDirectly");
 regSub(SUB_IDS.BASES_LAYOUT_POINTER_MODE, "baseLayoutPointerMode");
 regSub(SUB_IDS.BASES_LAYOUT_CONNECTOR_MODE, "baseLayoutConnectorMode");
 regSub(SUB_IDS.BASES_LAYOUT_TRANSFER_MODE, "baseLayoutTransferMode");

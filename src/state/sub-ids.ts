@@ -44,6 +44,7 @@ export const SUB_IDS = {
   BASES_BY_ID_MAP: "basesByIdMap",
   BASES_BASE_BY_ID: "basesBaseById",
   BASES_SELECTED_BASE_ID: "basesSelectedBaseId",
+  BASES_LAYOUT_OPEN_DIRECTLY: "basesLayoutOpenDirectly",
   BASES_SELECTED_BASE: "basesSelectedBase",
   BASES_SELECTED_BASE_DETAIL_STATS: "basesSelectedBaseDetailStats",
   BASES_DETAIL_STATS_BY_BASE_ID: "basesDetailStatsByBaseId",

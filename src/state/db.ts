@@ -267,6 +267,7 @@ export interface AppState {
     | "production_v2"
     | "receiver"
     | "dispatcher"; // Item palette mode: production v1 buildings, production v2 buildings, package receivers, or package dispatchers
+  baseLayoutOpenDirectly: boolean; // When true, BaseDetailView should switch to the layout tab on next render
   uiConfirmationDialog: ConfirmationDialog;
   productionPlanModalState: CreateProductionPlanModalState;
 }
@@ -305,6 +306,7 @@ const appState: AppState = {
   baseLayoutSelectedConnectionIds: [],
   baseLayoutSelectedConnectionId: null,
   baseLayoutItemPaletteMode: "production_v1",
+  baseLayoutOpenDirectly: false,
   uiConfirmationDialog: {
     isOpen: false,
     title: "",

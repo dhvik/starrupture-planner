@@ -1,17 +1,17 @@
-import React from 'react';
-import { useSubscription } from '@flexsurfer/reflex';
-import type { Base, Item, Production } from '../../../state/db';
-import { SUB_IDS } from '../../../state/sub-ids';
-import { ItemImage, BuildingImage } from '../../ui';
-import { EnergyGroupSelector } from './EnergyGroupSelector';
-import BaseLayoutBalanceBadge from '../layout/components/BaseLayoutBalanceBadge';
+import React from "react";
+import { useSubscription } from "@flexsurfer/reflex";
+import type { Base, Item, Production } from "../../../state/db";
+import { SUB_IDS } from "../../../state/sub-ids";
+import { ItemImage, BuildingImage } from "../../ui";
+import { EnergyGroupSelector } from "./EnergyGroupSelector";
+import BaseLayoutBalanceBadge from "../layout/components/BaseLayoutBalanceBadge";
 import type {
   BaseDetailStats,
   BaseInputItem,
   BaseOutputItem,
   BaseDefenseBuilding,
   ProductionPlanRequirementsStatus,
-} from '../types';
+} from "../types";
 
 interface BaseCardProps {
   base: Base;
@@ -33,13 +33,16 @@ const PlanItem: React.FC<PlanItemProps> = ({ plan, itemsMap, baseId }) => {
     plan.id,
   ]);
 
-  const { allRequirementsSatisfied, hasError, itemName, corporationName } = planData;
+  const { allRequirementsSatisfied, hasError, itemName, corporationName } =
+    planData;
 
   const badgeClass = hasError
-    ? 'badge-error'
+    ? "badge-error"
     : plan.active
-      ? (allRequirementsSatisfied ? 'badge-success' : 'badge-warning')
-      : 'badge-dash';
+      ? allRequirementsSatisfied
+        ? "badge-success"
+        : "badge-warning"
+      : "badge-dash";
 
   return (
     <div className="bg-base-300 rounded-lg px-3 py-2">
@@ -48,7 +51,7 @@ const PlanItem: React.FC<PlanItemProps> = ({ plan, itemsMap, baseId }) => {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm">{plan.name}</span>
             <span className={`badge badge-sm ${badgeClass}`}>
-              {plan.active ? 'Active' : 'Inactive'}
+              {plan.active ? "Active" : "Inactive"}
             </span>
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -60,7 +63,9 @@ const PlanItem: React.FC<PlanItemProps> = ({ plan, itemsMap, baseId }) => {
                 className="w-4 h-4"
               />
               <span className="text-xs text-base-content/80">{itemName}</span>
-              <span className="text-xs text-base-content/60">{plan.targetAmount}/min</span>
+              <span className="text-xs text-base-content/60">
+                {plan.targetAmount}/min
+              </span>
             </div>
             {corporationName && (
               <>
@@ -77,22 +82,54 @@ const PlanItem: React.FC<PlanItemProps> = ({ plan, itemsMap, baseId }) => {
   );
 };
 
-export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDelete }) => {
+export const BaseCard: React.FC<BaseCardProps> = ({
+  base,
+  onOpen,
+  onRename,
+  onDelete,
+}) => {
   // Use parameterized subscriptions
-  const stats = useSubscription<BaseDetailStats | null>([SUB_IDS.BASES_DETAIL_STATS_BY_BASE_ID, base.id]);
-  const inputItems = useSubscription<BaseInputItem[]>([SUB_IDS.BASES_INPUT_ITEMS_BY_BASE_ID, base.id]);
-  const outputItems = useSubscription<BaseOutputItem[]>([SUB_IDS.BASES_OUTPUT_ITEMS_BY_BASE_ID, base.id]);
-  const defenseBuildings = useSubscription<BaseDefenseBuilding[]>([SUB_IDS.BASES_DEFENSE_BUILDINGS_BY_BASE_ID, base.id]);
+  const stats = useSubscription<BaseDetailStats | null>([
+    SUB_IDS.BASES_DETAIL_STATS_BY_BASE_ID,
+    base.id,
+  ]);
+  const inputItems = useSubscription<BaseInputItem[]>([
+    SUB_IDS.BASES_INPUT_ITEMS_BY_BASE_ID,
+    base.id,
+  ]);
+  const outputItems = useSubscription<BaseOutputItem[]>([
+    SUB_IDS.BASES_OUTPUT_ITEMS_BY_BASE_ID,
+    base.id,
+  ]);
+  const defenseBuildings = useSubscription<BaseDefenseBuilding[]>([
+    SUB_IDS.BASES_DEFENSE_BUILDINGS_BY_BASE_ID,
+    base.id,
+  ]);
 
   // Get data for plans
-  const itemsMap = useSubscription<Record<string, Item>>([SUB_IDS.ITEMS_BY_ID_MAP]);
+  const itemsMap = useSubscription<Record<string, Item>>([
+    SUB_IDS.ITEMS_BY_ID_MAP,
+  ]);
 
   // Early return if stats not available
   if (!stats) {
     return null;
   }
 
-  const { coreLevel, totalHeat, energyGeneration, energyConsumption, energyGridConsumption, baseCoreHeatCapacity, heatPercentage, energyPercentage, isHeatOverCapacity, isEnergyInsufficient, energyGroupId, energyGroupName } = stats;
+  const {
+    coreLevel,
+    totalHeat,
+    energyGeneration,
+    energyConsumption,
+    energyGridConsumption,
+    baseCoreHeatCapacity,
+    heatPercentage,
+    energyPercentage,
+    isHeatOverCapacity,
+    isEnergyInsufficient,
+    energyGroupId,
+    energyGroupName,
+  } = stats;
 
   // Calculate plan counts and prepare plan data
   const planSections = base.productions || [];
@@ -117,10 +154,12 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
               fetchPriority="low"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
+                target.style.display = "none";
               }}
             />
-            <span className="badge badge-sm badge-outline mt-1">Lv.{coreLevel}</span>
+            <span className="badge badge-sm badge-outline mt-1">
+              Lv.{coreLevel}
+            </span>
           </div>
 
           <div className="flex flex-col flex-1 min-w-0 gap-2 mt-2">
@@ -131,12 +170,22 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
 
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
-                <span className={isHeatOverCapacity ? 'text-error' : 'text-base-content/70'}>Heat:</span>
-                <span className={`font-medium ${isHeatOverCapacity ? 'text-error' : ''}`}>{totalHeat} / {baseCoreHeatCapacity}</span>
+                <span
+                  className={
+                    isHeatOverCapacity ? "text-error" : "text-base-content/70"
+                  }
+                >
+                  Heat:
+                </span>
+                <span
+                  className={`font-medium ${isHeatOverCapacity ? "text-error" : ""}`}
+                >
+                  {totalHeat} / {baseCoreHeatCapacity}
+                </span>
               </div>
               <div className="w-full bg-base-300 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${isHeatOverCapacity ? 'bg-error' : 'bg-sky-400'}`}
+                  className={`h-2 rounded-full transition-all ${isHeatOverCapacity ? "bg-error" : "bg-sky-400"}`}
                   style={{ width: `${heatPercentage}%` }}
                 ></div>
               </div>
@@ -144,41 +193,53 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
 
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
-                <span className={`flex items-center gap-1 ${isEnergyInsufficient ? 'text-error' : 'text-base-content/70'}`}>
-                  Energy{energyGroupName ? ` [${energyGroupName}]` : ''}:
-                  <EnergyGroupSelector baseId={base.id} currentGroupId={energyGroupId} variant="text" />
+                <span
+                  className={`flex items-center gap-1 ${isEnergyInsufficient ? "text-error" : "text-base-content/70"}`}
+                >
+                  Energy{energyGroupName ? ` [${energyGroupName}]` : ""}:
+                  <EnergyGroupSelector
+                    baseId={base.id}
+                    currentGroupId={energyGroupId}
+                    variant="text"
+                  />
                 </span>
-                <span className={`font-medium ${isEnergyInsufficient ? 'text-error' : ''}`}>
+                <span
+                  className={`font-medium ${isEnergyInsufficient ? "text-error" : ""}`}
+                >
                   {energyConsumption}
                   {energyGroupId && (
-                    <span className="text-xs text-base-content/60"> ({energyGridConsumption})</span>
+                    <span className="text-xs text-base-content/60">
+                      {" "}
+                      ({energyGridConsumption})
+                    </span>
                   )}
-                  {' / '}
+                  {" / "}
                   {energyGeneration} MW
                 </span>
               </div>
               <div className="w-full bg-base-300 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${isEnergyInsufficient ? 'bg-error' : 'bg-success'
-                    }`}
+                  className={`h-2 rounded-full transition-all ${
+                    isEnergyInsufficient ? "bg-error" : "bg-success"
+                  }`}
                   style={{ width: `${energyPercentage}%` }}
                 ></div>
               </div>
             </div>
-
-            {/* Layout Balance Badge */}
-            {base.layout && (
-              <div className="pt-1">
-                <BaseLayoutBalanceBadge baseId={base.id} />
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Layout row: spans full width, 3 columns */}
+        {base.layout && (
+          <BaseLayoutBalanceBadge baseId={base.id} className="mb-4" />
+        )}
 
         {/* Row 2: Production Plans */}
         {planSections.length > 0 && (
           <div className="mb-4 space-y-2">
-            <div className="text-sm text-base-content/70 mb-1">Production Plans</div>
+            <div className="text-sm text-base-content/70 mb-1">
+              Production Plans
+            </div>
             <div className="space-y-2">
               {planSections.map((plan) => (
                 <PlanItem
@@ -193,11 +254,15 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
         )}
 
         {/* Row 3: Input Items, Output Items, and Defense */}
-        {(inputItems.length > 0 || outputItems.length > 0 || defenseBuildings.length > 0) && (
+        {(inputItems.length > 0 ||
+          outputItems.length > 0 ||
+          defenseBuildings.length > 0) && (
           <div className="mb-4 space-y-3">
             {inputItems.length > 0 && (
               <div className="space-y-1">
-                <div className="text-sm text-base-content/70 mb-1">Input Items</div>
+                <div className="text-sm text-base-content/70 mb-1">
+                  Input Items
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {inputItems.map(({ item, ratePerMinute, baseBuildingId }) => (
                     <div
@@ -211,7 +276,9 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
                         size="small"
                         className="w-5 h-5"
                       />
-                      <span className="text-xs font-medium">{ratePerMinute}/min</span>
+                      <span className="text-xs font-medium">
+                        {ratePerMinute}/min
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -220,23 +287,29 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
 
             {outputItems.length > 0 && (
               <div className="space-y-1">
-                <div className="text-sm text-base-content/70 mb-1">Output Items</div>
+                <div className="text-sm text-base-content/70 mb-1">
+                  Output Items
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  {outputItems.map(({ item, ratePerMinute, building }, index) => (
-                    <div
-                      key={`output-${building.id}-${item.id}-${index}`}
-                      className="flex items-center gap-1 px-2 py-1"
-                      title={`${item.name} - ${ratePerMinute}/min`}
-                    >
-                      <ItemImage
-                        itemId={item.id}
-                        item={item}
-                        size="small"
-                        className="w-5 h-5"
-                      />
-                      <span className="text-xs font-medium">{ratePerMinute}/min</span>
-                    </div>
-                  ))}
+                  {outputItems.map(
+                    ({ item, ratePerMinute, building }, index) => (
+                      <div
+                        key={`output-${building.id}-${item.id}-${index}`}
+                        className="flex items-center gap-1 px-2 py-1"
+                        title={`${item.name} - ${ratePerMinute}/min`}
+                      >
+                        <ItemImage
+                          itemId={item.id}
+                          item={item}
+                          size="small"
+                          className="w-5 h-5"
+                        />
+                        <span className="text-xs font-medium">
+                          {ratePerMinute}/min
+                        </span>
+                      </div>
+                    ),
+                  )}
                 </div>
               </div>
             )}
@@ -249,16 +322,20 @@ export const BaseCard: React.FC<BaseCardProps> = ({ base, onOpen, onRename, onDe
                     <div
                       key={building.id}
                       className="flex items-center gap-1 bg-base-300 rounded-lg px-2 py-1"
-                      title={`${building.name}${count > 1 ? ` (${count})` : ''}`}
+                      title={`${building.name}${count > 1 ? ` (${count})` : ""}`}
                     >
                       <BuildingImage
                         buildingId={building.id}
                         building={building}
                         size="small"
                       />
-                      <span className="text-xs font-medium">{building.name}</span>
+                      <span className="text-xs font-medium">
+                        {building.name}
+                      </span>
                       {count > 1 && (
-                        <span className="text-xs font-medium text-base-content/70">×{count}</span>
+                        <span className="text-xs font-medium text-base-content/70">
+                          ×{count}
+                        </span>
                       )}
                     </div>
                   ))}

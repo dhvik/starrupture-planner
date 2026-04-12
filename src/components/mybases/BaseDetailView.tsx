@@ -109,10 +109,10 @@ export const BaseDetailView: React.FC = () => {
 
             {activeTab === "balance" && hasLayout && (
               <div className="bg-base-200 rounded-lg p-3 sm:p-4">
-                <h3 className="font-semibold text-sm mb-3">
-                  Production Balance
-                </h3>
-                <BaseLayoutBalanceSummary baseId={selectedBase.id} />
+                <BaseLayoutBalanceSummary
+                  baseId={selectedBase.id}
+                  expandedView
+                />
               </div>
             )}
           </div>

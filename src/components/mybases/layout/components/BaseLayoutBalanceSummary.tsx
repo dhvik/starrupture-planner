@@ -15,11 +15,13 @@ import { ItemImage } from "../../../ui";
 interface BaseLayoutBalanceSummaryProps {
   baseId: string;
   className?: string;
+  expandedView?: boolean;
 }
 
 const BaseLayoutBalanceSummary = ({
   baseId,
   className,
+  expandedView = false,
 }: BaseLayoutBalanceSummaryProps) => {
   const balance = useSubscription<BaseLayoutBalance[]>([
     SUB_IDS.BASES_LAYOUT_BALANCE_BY_BASE_ID,
@@ -52,6 +54,29 @@ const BaseLayoutBalanceSummary = ({
     const balanceB = b.surplus - b.deficit;
     return balanceA - balanceB;
   });
+
+  // Aggregate receiver (input) and dispatcher (output) rates
+  const receiverRates = new Map<string, number>();
+  const dispatcherRates = new Map<string, number>();
+
+  for (const b of layoutBuildings ?? []) {
+    const isReceiver =
+      b.buildingType === "receiver" || b.buildingId === "package_receiver";
+    const isDispatcher =
+      b.buildingType === "dispatcher" || b.buildingId === "package_dispatcher";
+    if (isReceiver) {
+      receiverRates.set(
+        b.itemId,
+        (receiverRates.get(b.itemId) ?? 0) + (b.receiverOutputRate ?? 100),
+      );
+    }
+    if (isDispatcher) {
+      dispatcherRates.set(
+        b.itemId,
+        (dispatcherRates.get(b.itemId) ?? 0) + (b.dispatcherInputRate ?? 100),
+      );
+    }
+  }
 
   const handleRowClick = useCallback(
     (itemId: string) => {
@@ -100,6 +125,168 @@ const BaseLayoutBalanceSummary = ({
     [layoutBuildings, buildingsById, connections],
   );
 
+  if (imbalancedItems.length === 0 && !expandedView) {
+    return (
+      <div className={`alert alert-success ${className}`}>
+        <span>✅ All production balanced! No surpluses or deficits.</span>
+      </div>
+    );
+  }
+
+  if (expandedView) {
+    // 3-column layout for BaseDetailView
+    return (
+      <div className={`grid grid-cols-3 gap-4 ${className ?? ""}`}>
+        {/* Column 1: Inputs (Receivers) */}
+        <div>
+          <h4 className="font-semibold text-sm mb-3">Input</h4>
+          {receiverRates.size > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th className="text-right">Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...receiverRates.entries()].map(([itemId, rate]) => {
+                    const item = itemsById[itemId];
+                    return (
+                      <tr key={itemId}>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <ItemImage itemId={itemId} size="small" />
+                            <span className="text-sm">
+                              {item?.name || itemId}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right text-sm">{rate}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <span className="text-xs text-base-content/30">—</span>
+          )}
+        </div>
+
+        {/* Column 2: Base Balance */}
+        <div>
+          <h4 className="font-semibold text-sm mb-3">Base Balance</h4>
+          {imbalancedItems.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th
+                      className="text-right"
+                      title="Production/Demand/Balance"
+                    >
+                      P/D/B
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {imbalancedItems.map((item) => {
+                    const itemData = itemsById[item.itemId];
+                    const balanceValue = item.surplus - item.deficit;
+                    const balanceClass =
+                      balanceValue > 0
+                        ? "text-success"
+                        : balanceValue < 0
+                          ? "text-error"
+                          : "";
+                    const isFlashing = flashedItemId === item.itemId;
+
+                    return (
+                      <tr
+                        key={item.itemId}
+                        onClick={() => handleRowClick(item.itemId)}
+                        className={`cursor-pointer transition-colors duration-300 ${
+                          isFlashing ? "bg-primary/25" : "hover:bg-base-300"
+                        }`}
+                      >
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <ItemImage itemId={item.itemId} size="small" />
+                            <span className="text-sm">
+                              {itemData?.name || item.itemId}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right">
+                          <div className="flex flex-col items-end leading-tight">
+                            <span className="text-sm">
+                              {item.totalProduction.toFixed(1)}/
+                              {item.totalDemand.toFixed(1)}
+                            </span>
+                            <span
+                              className={`font-bold text-sm ${balanceClass}`}
+                            >
+                              {balanceValue > 0 && "+"}
+                              {balanceValue.toFixed(1)}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="alert alert-success alert-sm">
+              <span>✅ Balanced</span>
+            </div>
+          )}
+        </div>
+
+        {/* Column 3: Outputs (Dispatchers) */}
+        <div>
+          <h4 className="font-semibold text-sm mb-3">Output</h4>
+          {dispatcherRates.size > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th className="text-right">Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...dispatcherRates.entries()].map(([itemId, rate]) => {
+                    const item = itemsById[itemId];
+                    return (
+                      <tr key={itemId}>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <ItemImage itemId={itemId} size="small" />
+                            <span className="text-sm">
+                              {item?.name || itemId}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right text-sm">{rate}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <span className="text-xs text-base-content/30">—</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Standard single-column layout for layout balance palette
   if (imbalancedItems.length === 0) {
     return (
       <div className={`alert alert-success ${className}`}>
